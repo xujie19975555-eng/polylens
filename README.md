@@ -1,5 +1,7 @@
 # PolyLens — Polymarket Wallet PnL Audit & x402 USDC API
 
+Live App: https://polylens-zeta.vercel.app
+
 Audit any Polymarket wallet in 2 seconds: real PnL, win rate, entry fees burned, unclaimed redeemable USDC winnings, shareable 1200x630 PNG Trader Cards, full CSV export (**3 USDC**), and machine-to-machine **x402** JSON API (**0.05 USDC/call**).
 
 - **Zero server cost**: Runs on Vercel Free Tier or Cloudflare Pages Free Tier (zero external npm dependencies).
