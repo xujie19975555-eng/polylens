@@ -66,7 +66,8 @@ export function computeFifoTaxLedger(rawEvents, { year = "2026" } = {}) {
     return String(a?.transaction_hash || "").localeCompare(String(b?.transaction_hash || ""));
   });
 
-  const lots = new Map(); // token_id -> Array<{ remaining: number, unitCost: number }>
+  const LONG_TERM_HOLD_SECONDS = 365 * 86400;
+  const lots = new Map(); // token_id -> Array<{ remaining: number, unitCost: number, acquiredAt: number | null, acquiredDate: string | null }>
   const allTaxable = [];
   let unknownTimestampCount = 0;
   let unmatchedDisposalCount = 0;
@@ -82,26 +83,42 @@ export function computeFifoTaxLedger(rawEvents, { year = "2026" } = {}) {
 
     if (type === "TRADE" && String(e?.side || "").toUpperCase() === "BUY" && size > 0 && tokenId) {
       const q = lots.get(tokenId) || [];
-      q.push({ remaining: size, unitCost: usdcSize / size });
+      const buyParts = toUtcParts(e?.timestamp);
+      const acquiredAt = buyParts ? Number(e.timestamp) : null;
+      q.push({
+        remaining: size,
+        unitCost: usdcSize / size,
+        acquiredAt,
+        acquiredDate: buyParts ? buyParts.date : null,
+      });
       lots.set(tokenId, q);
       continue;
     }
 
-    if ((type === "TRADE" && String(e?.side || "").toUpperCase() === "SELL" && size > 0) || (type === "REDEEM" && size > 0)) {
+    if (
+      (type === "TRADE" && String(e?.side || "").toUpperCase() === "SELL" && size > 0) ||
+      (type === "REDEEM" && size > 0)
+    ) {
       let rem = size;
       let costBasisUsdc = 0;
+      const matchedLots = [];
       const q = lots.get(tokenId) || [];
       while (rem > 1e-9 && q.length > 0) {
         const head = q[0];
         const take = Math.min(rem, head.remaining);
         costBasisUsdc += take * head.unitCost;
+        matchedLots.push({
+          acquiredAt: head.acquiredAt,
+          acquiredDate: head.acquiredDate,
+        });
         head.remaining -= take;
         rem -= take;
         if (head.remaining <= 1e-9) {
           q.shift();
         }
       }
-      if (rem > 1e-4) {
+      const hasUnmatchedRemainder = rem > 1e-4;
+      if (hasUnmatchedRemainder) {
         unmatchedDisposalCount += 1;
       }
 
@@ -113,11 +130,46 @@ export function computeFifoTaxLedger(rawEvents, { year = "2026" } = {}) {
         continue;
       }
 
+      const soldAt = Number(e.timestamp);
+      const soldDate = parts.date;
+
+      // Determine acquisition date across matched FIFO lots:
+      // - "Unknown" when no prior lot existed (or matched lots lacked valid timestamps)
+      // - "Various" when matched across >=2 distinct UTC dates (or partially unmatched/missing-date mix)
+      // - "YYYY-MM-DD" when all matched shares trace to a single UTC acquisition date
+      let acquiredDate = "Unknown";
+      if (matchedLots.length > 0) {
+        const distinctDates = new Set(matchedLots.map((l) => l.acquiredDate).filter(Boolean));
+        const hasMissingLotDate = matchedLots.some((l) => !l.acquiredDate) || hasUnmatchedRemainder;
+        if (distinctDates.size === 0) {
+          acquiredDate = "Unknown";
+        } else if (distinctDates.size >= 2 || hasMissingLotDate) {
+          acquiredDate = "Various";
+        } else {
+          acquiredDate = [...distinctDates][0];
+        }
+      }
+
+      // IRS holding term rule (deterministic, conservative fallback):
+      // - "Long-Term" ONLY when every share was matched to prior lot(s) with valid timestamps
+      //   AND every matched lot was held strictly > 365 days (soldAt - acquiredAt > 365 * 86400).
+      // - "Short-Term" when all matched lots are <= 365 days, or when lots are mixed or unknown.
+      const isLongTerm =
+        matchedLots.length > 0 &&
+        !hasUnmatchedRemainder &&
+        matchedLots.every(
+          (l) => Number.isFinite(l.acquiredAt) && soldAt - l.acquiredAt > LONG_TERM_HOLD_SECONDS
+        );
+      const holdingTerm = isLongTerm ? "Long-Term" : "Short-Term";
+
       allTaxable.push({
         kind: type,
         year: parts.year,
         date: parts.date,
         koinlyDate: parts.koinlyDate,
+        acquiredDate,
+        soldDate,
+        holdingTerm,
         title,
         outcome,
         shares: Number(size.toFixed(4)),
@@ -261,6 +313,58 @@ export function buildDetailedLedgerCsv(events) {
   return lines.join("\n");
 }
 
+const ORDINARY_INCOME_KINDS = new Set(["REWARD", "MAKER_REBATE", "TAKER_REBATE"]);
+
+export function buildForm8949Csv(events) {
+  const headers = [
+    "Description of Property",
+    "Date Acquired",
+    "Date Sold or Disposed",
+    "Proceeds (USD)",
+    "Cost or Other Basis (USD)",
+    "Adjustment Code",
+    "Adjustment Amount (USD)",
+    "Gain or (Loss) (USD)",
+    "Term",
+    "TxHash",
+  ];
+  const lines = [headers.join(",")];
+  for (const ev of events || []) {
+    const kind = String(ev?.kind || "").toUpperCase();
+    if (ORDINARY_INCOME_KINDS.has(kind)) continue;
+
+    const sharesNum = Number(ev?.shares || 0);
+    const shareLabel = Number.isFinite(sharesNum) && sharesNum > 0
+      ? `${sharesNum.toFixed(4).replace(/\.?0+$/, "")} sh `
+      : "";
+    const outcomeLabel = ev?.outcome && ev.outcome !== "-" ? ` (${ev.outcome})` : "";
+    const description = `${shareLabel}${ev?.title || "Polymarket Position"}${outcomeLabel} [${kind || "TRADE"}]`;
+
+    const proceeds = Number(ev?.proceedsUsdc || 0);
+    const costBasis = Number(ev?.costBasisUsdc || 0);
+    const rawGainLoss = Number(ev?.realizedPnlUsdc ?? proceeds - costBasis);
+    const gainLoss = Math.abs(rawGainLoss) < 0.005 ? 0 : rawGainLoss;
+
+    lines.push(
+      [
+        description,
+        ev?.acquiredDate || "Unknown",
+        ev?.soldDate || ev?.date || "",
+        proceeds.toFixed(2),
+        costBasis.toFixed(2),
+        "",
+        "0.00",
+        gainLoss.toFixed(2),
+        ev?.holdingTerm || "Short-Term",
+        ev?.txHash || "",
+      ]
+        .map(csvEsc)
+        .join(",")
+    );
+  }
+  return lines.join("\n");
+}
+
 export async function buildFifoTaxReport(address, { year = "2026", full = false } = {}) {
   const inputAddr = String(address || "").trim().toLowerCase();
   const profile = await fetchJson(`${GAMMA_API}/public-profile?address=${inputAddr}`).catch(() => null);
@@ -335,5 +439,6 @@ export async function buildFifoTaxReport(address, { year = "2026", full = false 
     events: ledger.events,
     koinlyCsv: buildKoinlyCsv(ledger.events),
     detailedCsv: buildDetailedLedgerCsv(ledger.events),
+    form8949Csv: buildForm8949Csv(ledger.events),
   };
 }

@@ -150,6 +150,10 @@ function renderTax(data) {
   if (isPro) {
     $("tax-paywall").classList.add("hidden");
     $("tax-unlocked-bar").classList.remove("hidden");
+    const form8949Btn = $("tax-download-form8949-btn");
+    if (form8949Btn) {
+      form8949Btn.classList.toggle("hidden", !data.form8949Csv);
+    }
     if (data.paymentVerified) {
       $("tax-tx-info").textContent = ` · Verified ${data.paymentVerified.amountUsdc} ${data.paymentVerified.tokenSymbol} on ${data.paymentVerified.chainName}`;
     }
@@ -296,6 +300,11 @@ function downloadCsv(csvText, filename) {
 $("tax-download-koinly-btn").addEventListener("click", () => {
   if (!currentTax?.koinlyCsv) return;
   downloadCsv(currentTax.koinlyCsv, `polylens-koinly-${currentTax.year}-${currentTax.address.slice(0, 8)}.csv`);
+});
+
+$("tax-download-form8949-btn")?.addEventListener("click", () => {
+  if (!currentTax?.form8949Csv) return;
+  downloadCsv(currentTax.form8949Csv, `polylens-form8949-${currentTax.year}-${currentTax.address.slice(0, 8)}.csv`);
 });
 
 $("tax-download-detail-btn").addEventListener("click", () => {

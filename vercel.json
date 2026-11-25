@@ -5,6 +5,7 @@
   "rewrites": [
     { "source": "/tax-export", "destination": "/tax-export.html" },
     { "source": "/polymarket-tax-csv-koinly", "destination": "/polymarket-tax-csv-koinly.html" },
+    { "source": "/polymarket-form-8949-tax", "destination": "/polymarket-form-8949-tax.html" },
     { "source": "/api/(.*)", "destination": "/api/router" },
     { "source": "/.well-known/x402.json", "destination": "/api/router" }
   ]

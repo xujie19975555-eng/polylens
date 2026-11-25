@@ -1,0 +1,208 @@
+{
+  "version": 1,
+  "updatedAt": "2026-11-26",
+  "northStar": "Reach $100-$1,000+ monthly USDC revenue via 7 USDC Polymarket 2026 Tax CSV exports & SEO/distribution compounding",
+  "items": [
+    {
+      "id": "koinly-live-verification",
+      "title": "Verify 2026 FIFO Koinly CSV live import on Koinly",
+      "priority": "P0",
+      "status": "done",
+      "category": "product",
+      "ownerFiles": [
+        "src/core/tax-fifo.js",
+        "tests/v3-security-tax.test.mjs"
+      ],
+      "acceptanceCriteria": "126/126 non-zero rows import into Koinly with 0 parse errors, 0 missing-purchase warnings, and 30 losing positions preserved.",
+      "revenueHypothesis": "Eliminates Koinly import failures so 7 USDC tax export buyers trust the CSV immediately."
+    },
+    {
+      "id": "form-8949-csv-export",
+      "title": "Add IRS Form 8949 CSV export with acquiredDate and Short/Long-Term classification",
+      "priority": "P0",
+      "status": "done",
+      "category": "product",
+      "ownerFiles": [
+        "src/core/tax-fifo.js",
+        "src/core/handlers.js",
+        "public/tax-export.html",
+        "public/tax-export.js",
+        "tests/v3-security-tax.test.mjs"
+      ],
+      "acceptanceCriteria": "buildForm8949Csv emits Form 8949 columns, tracks lot acquiredDate ('Various' for multi-date lots), excludes ordinary-income rewards, preserves negative losses, and exposes form8949Csv in /api/tax-export and UI.",
+      "revenueHypothesis": "Captures US Polymarket traders who file Schedule D / Form 8949 directly or via a CPA without paying for Koinly."
+    },
+    {
+      "id": "free-sample-csv-and-proof",
+      "title": "Add zero-network /api/tax-sample endpoint and Koinly live-tested proof strip",
+      "priority": "P0",
+      "status": "done",
+      "category": "growth",
+      "ownerFiles": [
+        "src/core/handlers.js",
+        "public/tax-export.html",
+        "tests/v3-security-tax.test.mjs"
+      ],
+      "acceptanceCriteria": "GET /api/tax-sample?format=koinly|form8949 returns downloadable CSV with zero upstream fetches; /tax-export shows Koinly proof and sample links before checkout.",
+      "revenueHypothesis": "Raises preview-to-paid conversion by letting buyers inspect exact CSV columns and Koinly verification before sending 7 USDC."
+    },
+    {
+      "id": "seo-form-8949-landing-page",
+      "title": "Publish /polymarket-form-8949-tax SEO guide and cross-link sitemap and llms.txt",
+      "priority": "P0",
+      "status": "done",
+      "category": "seo",
+      "ownerFiles": [
+        "public/polymarket-form-8949-tax.html",
+        "public/polymarket-tax-csv-koinly.html",
+        "public/sitemap.xml",
+        "public/llms.txt",
+        "index.js",
+        "vercel.json"
+      ],
+      "acceptanceCriteria": "GET /polymarket-form-8949-tax returns 200 on both Vercel and local server, links to /tax-export and /polymarket-tax-csv-koinly, and is indexed in sitemap.xml and llms.txt.",
+      "revenueHypothesis": "Captures high-intent US tax season search traffic for Polymarket Form 8949 and Schedule D queries."
+    },
+    {
+      "id": "daily-autopilot-harness",
+      "title": "Build daily audit script, live smoke verifier, LaunchAgent, and autopilot SOP",
+      "priority": "P0",
+      "status": "done",
+      "category": "ops",
+      "ownerFiles": [
+        "ops/AUTOPILOT.md",
+        "ops/ROADMAP.md",
+        "ops/BACKLOG.json",
+        "ops/CHANGELOG.md",
+        "scripts/daily-audit.mjs",
+        "scripts/verify-live.mjs",
+        "tests/autopilot.test.mjs",
+        ".gitignore"
+      ],
+      "acceptanceCriteria": "daily-audit.mjs writes ops/metrics/YYYY-MM-DD.json and ops/reviews/YYYY-MM-DD.md, verify-live.mjs validates all production endpoints, and tests/autopilot.test.mjs passes offline.",
+      "revenueHypothesis": "Ensures zero-human daily regression detection, funnel monitoring, and continuous shipping without operator bottleneck."
+    },
+    {
+      "id": "coinledger-awaken-csv",
+      "title": "Add CoinLedger and Awaken Tax CSV export templates and sample formats",
+      "priority": "P0",
+      "status": "ready",
+      "category": "product",
+      "ownerFiles": [
+        "src/core/tax-fifo.js",
+        "src/core/handlers.js",
+        "public/tax-export.html",
+        "public/tax-export.js",
+        "tests/v3-security-tax.test.mjs"
+      ],
+      "acceptanceCriteria": "Export buildCoinLedgerCsv and buildAwakenCsv in src/core/tax-fifo.js, expose coinledgerCsv and awakenCsv in /api/tax-export and /api/tax-sample?format=coinledger|awaken, add download buttons in tax-export UI, and add unit tests.",
+      "revenueHypothesis": "Doubles addressable tax-software buyer pool by supporting CoinLedger and Awaken alongside Koinly and IRS Form 8949."
+    },
+    {
+      "id": "kalshi-vs-polymarket-tax-seo",
+      "title": "Publish Kalshi vs Polymarket Tax Comparison SEO guide",
+      "priority": "P0",
+      "status": "ready",
+      "category": "seo",
+      "ownerFiles": [
+        "public/kalshi-vs-polymarket-tax.html",
+        "public/polymarket-form-8949-tax.html",
+        "public/polymarket-tax-csv-koinly.html",
+        "public/sitemap.xml",
+        "public/llms.txt",
+        "index.js",
+        "vercel.json"
+      ],
+      "acceptanceCriteria": "Serve /kalshi-vs-polymarket-tax on Vercel and Node server with 1099-MISC/B vs on-chain CTF FIFO comparison table, cross-links, and CTA to /tax-export.",
+      "revenueHypothesis": "Targets high-volume prediction-market comparison queries where US traders discover Polymarket lacks a 1099 and need a 7 USDC CSV."
+    },
+    {
+      "id": "daily-whale-pnl-x-drafts",
+      "title": "Create automated daily whale-PnL X post draft generator in ops/drafts/",
+      "priority": "P1",
+      "status": "ready",
+      "category": "growth",
+      "ownerFiles": [
+        "scripts/generate-x-drafts.mjs",
+        "ops/drafts/",
+        "tests/autopilot.test.mjs"
+      ],
+      "acceptanceCriteria": "Script generates daily Markdown/JSON tweet drafts (strictly <= 255 chars main tweet + reply with /tax-export and wallet URL) into ops/drafts/YYYY-MM-DD.md without requiring X API write tokens.",
+      "revenueHypothesis": "Drives consistent organic top-of-funnel clicks from Polymarket traders on X at zero ad spend."
+    },
+    {
+      "id": "multi-wallet-bundle-export",
+      "title": "Add multi-wallet bundle FIFO tax export (up to 5 proxy/EOA addresses)",
+      "priority": "P1",
+      "status": "ready",
+      "category": "product",
+      "ownerFiles": [
+        "src/core/tax-fifo.js",
+        "src/core/handlers.js",
+        "src/core/config.js",
+        "public/tax-export.html",
+        "public/tax-export.js",
+        "tests/v3-security-tax.test.mjs"
+      ],
+      "acceptanceCriteria": "Accept comma-separated wallets (max 5) on /api/tax-preview and /api/tax-export, merge chronological FIFO lots across addresses, and enforce bundle pricing.",
+      "revenueHypothesis": "Captures power traders who split Polymarket activity across multiple proxy/EOA wallets and want one unified Form 8949 / Koinly export."
+    },
+    {
+      "id": "tg-bot-pro-tax-upsell",
+      "title": "Add 2026 Tax CSV pre-filled upsell CTA in @polylens_alerts_bot commands",
+      "priority": "P1",
+      "status": "ready",
+      "category": "growth",
+      "ownerFiles": [
+        "bot/commands.js",
+        "tests/v3-security-tax.test.mjs"
+      ],
+      "acceptanceCriteria": "/audit and /watch replies include a direct deep link to https://polylens-zeta.vercel.app/tax-export?w=<address> when an address is inspected, covered by unit tests.",
+      "revenueHypothesis": "Converts active free TG alert users into 7 USDC tax export buyers without building paid TG infra."
+    },
+    {
+      "id": "polymarket-1099-da-faq",
+      "title": "Publish Polymarket 1099-DA FAQ SEO page",
+      "priority": "P1",
+      "status": "ready",
+      "category": "seo",
+      "ownerFiles": [
+        "public/polymarket-1099-da-faq.html",
+        "public/sitemap.xml",
+        "public/llms.txt",
+        "index.js",
+        "vercel.json"
+      ],
+      "acceptanceCriteria": "Serve /polymarket-1099-da-faq with structured FAQPage JSON-LD schema covering 2026 IRS 1099-DA non-custodial rules and Polymarket CTF reconciliation, wired into sitemap and llms.txt.",
+      "revenueHypothesis": "Captures anxious US filers searching whether Polymarket issues a 1099-DA and routes them straight to /tax-export."
+    },
+    {
+      "id": "dynamic-trader-og-card",
+      "title": "Add dynamic trader PnL SVG/OG social card route for ?w=0x... shares",
+      "priority": "P2",
+      "status": "ready",
+      "category": "growth",
+      "ownerFiles": [
+        "src/core/handlers.js",
+        "public/client.js",
+        "tests/v3-security-tax.test.mjs"
+      ],
+      "acceptanceCriteria": "GET /api/trader-card?address=0x... returns deterministic SVG trader card with PnL, rank, win rate, and tax-export CTA; Share on X links include wallet URL.",
+      "revenueHypothesis": "Increases viral CTR on X when traders share their audited wallet PnL cards."
+    },
+    {
+      "id": "custom-domain-dns-setup",
+      "title": "Attach dedicated custom domain (polylens.xyz or similar) to Vercel project",
+      "priority": "P2",
+      "status": "blocked",
+      "category": "seo",
+      "ownerFiles": [
+        "public/sitemap.xml",
+        "public/llms.txt",
+        "src/core/config.js"
+      ],
+      "acceptanceCriteria": "NEEDS_HUMAN: Owner purchases domain and configures Vercel DNS CNAME; agent updates canonical URLs across HTML, sitemap.xml, and scripts.",
+      "revenueHypothesis": "Replaces shared vercel.app subdomain with an authoritative domain for Google indexing."
+    }
+  ]
+}

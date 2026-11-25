@@ -7,12 +7,146 @@ import {
   isValidEvmAddress,
 } from "./polymarket.js";
 import { fetchHyperliquidFunding } from "./hyperliquid.js";
-import { buildFifoTaxReport } from "./tax-fifo.js";
+import {
+  buildFifoTaxReport,
+  buildForm8949Csv,
+  buildKoinlyCsv,
+  computeFifoTaxLedger,
+} from "./tax-fifo.js";
 import {
   claimTxHash,
   getRecentMetrics,
   incrementMetric,
 } from "./replay-store.js";
+
+function buildTaxSampleCsv(format) {
+  // Deterministic synthetic Polymarket events (zero network calls) run through the real FIFO ledger
+  const baseEvents = [
+    // 1) Multi-lot trade across two UTC dates (BUY 2026-01-05 + BUY 2026-01-08 -> SELL 2026-02-14)
+    {
+      type: "TRADE",
+      side: "BUY",
+      token_id: "sample_tok_btc",
+      size: 100,
+      usdc_size: 40,
+      timestamp: Date.UTC(2026, 0, 5, 14, 20, 0) / 1000,
+      transaction_hash: "0x1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa1111aaaa",
+      title: "Will BTC exceed $120k in Q1 2026?",
+      outcome: "Yes",
+    },
+    {
+      type: "TRADE",
+      side: "BUY",
+      token_id: "sample_tok_btc",
+      size: 100,
+      usdc_size: 50,
+      timestamp: Date.UTC(2026, 0, 8, 9, 15, 0) / 1000,
+      transaction_hash: "0x2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb2222bbbb",
+      title: "Will BTC exceed $120k in Q1 2026?",
+      outcome: "Yes",
+    },
+    {
+      type: "TRADE",
+      side: "SELL",
+      token_id: "sample_tok_btc",
+      size: 150,
+      usdc_size: 105,
+      timestamp: Date.UTC(2026, 1, 14, 18, 30, 0) / 1000,
+      transaction_hash: "0x3333cccc3333cccc3333cccc3333cccc3333cccc3333cccc3333cccc3333cccc",
+      title: "Will BTC exceed $120k in Q1 2026?",
+      outcome: "Yes",
+    },
+    // 2) Losing REDEEM ($0 proceeds -> capital loss preserved)
+    {
+      type: "TRADE",
+      side: "BUY",
+      token_id: "sample_tok_fed",
+      size: 200,
+      usdc_size: 120.5,
+      timestamp: Date.UTC(2026, 1, 20, 11, 0, 0) / 1000,
+      transaction_hash: "0x4444dddd4444dddd4444dddd4444dddd4444dddd4444dddd4444dddd4444dddd",
+      title: "Fed rate cut in March 2026?",
+      outcome: "Yes",
+    },
+    {
+      type: "REDEEM",
+      token_id: "sample_tok_fed",
+      size: 200,
+      usdc_size: 0,
+      timestamp: Date.UTC(2026, 2, 19, 19, 5, 0) / 1000,
+      transaction_hash: "0x5555eeee5555eeee5555eeee5555eeee5555eeee5555eeee5555eeee5555eeee",
+      title: "Fed rate cut in March 2026?",
+      outcome: "Yes",
+    },
+    // 3) Winning SELL (single lot)
+    {
+      type: "TRADE",
+      side: "BUY",
+      token_id: "sample_tok_eth",
+      size: 100,
+      usdc_size: 55,
+      timestamp: Date.UTC(2026, 3, 2, 8, 45, 0) / 1000,
+      transaction_hash: "0x6666ffff6666ffff6666ffff6666ffff6666ffff6666ffff6666ffff6666ffff",
+      title: "ETH spot ETF inflows > $1B in April?",
+      outcome: "No",
+    },
+    {
+      type: "TRADE",
+      side: "SELL",
+      token_id: "sample_tok_eth",
+      size: 100,
+      usdc_size: 88.25,
+      timestamp: Date.UTC(2026, 3, 28, 16, 10, 0) / 1000,
+      transaction_hash: "0x7777aaaa7777aaaa7777aaaa7777aaaa7777aaaa7777aaaa7777aaaa7777aaaa",
+      title: "ETH spot ETF inflows > $1B in April?",
+      outcome: "No",
+    },
+    // 4) Liquidity / holding REWARD (included in Koinly as reward, excluded from Form 8949)
+    {
+      type: "REWARD",
+      size: 12.5,
+      usdc_size: 12.5,
+      timestamp: Date.UTC(2026, 4, 1, 0, 0, 0) / 1000,
+      transaction_hash: "0x8888bbbb8888bbbb8888bbbb8888bbbb8888bbbb8888bbbb8888bbbb8888bbbb",
+      title: "Polymarket Liquidity Reward",
+      outcome: "-",
+    },
+  ];
+
+  if (format === "form8949") {
+    // Add a 4th capital disposal (Long-Term >365d) so Form 8949 sample yields 4 capital disposal rows
+    // after excluding the REWARD row.
+    baseEvents.push(
+      {
+        type: "TRADE",
+        side: "BUY",
+        token_id: "sample_tok_lt",
+        size: 80,
+        usdc_size: 32,
+        timestamp: Date.UTC(2025, 0, 15, 10, 0, 0) / 1000,
+        transaction_hash: "0x9999cccc9999cccc9999cccc9999cccc9999cccc9999cccc9999cccc9999cccc",
+        title: "US Debt Ceiling Raised Before Mid-2026?",
+        outcome: "Yes",
+      },
+      {
+        type: "TRADE",
+        side: "SELL",
+        token_id: "sample_tok_lt",
+        size: 80,
+        usdc_size: 64,
+        timestamp: Date.UTC(2026, 4, 10, 12, 0, 0) / 1000,
+        transaction_hash: "0xaaaaddddaaaaddddaaaaddddaaaaddddaaaaddddaaaaddddaaaaddddaaaadddd",
+        title: "US Debt Ceiling Raised Before Mid-2026?",
+        outcome: "Yes",
+      }
+    );
+  }
+
+  const ledger = computeFifoTaxLedger(baseEvents, { year: "2026" });
+  return format === "form8949"
+    ? buildForm8949Csv(ledger.events)
+    : buildKoinlyCsv(ledger.events);
+}
 
 function jsonResp(status, data, extraHeaders = {}) {
   return {
@@ -82,9 +216,14 @@ export async function handleApiRequest({
             description: "Free /v2/activity FIFO taxable event count & direction preview",
           },
           {
+            path: "/api/tax-sample?format=koinly|form8949",
+            priceUsdc: 0,
+            description: "Free deterministic 4-row sample CSV (Koinly or IRS Form 8949)",
+          },
+          {
             path: "/api/tax-export?address=0x...&year=2026&tx=0x...",
             priceUsdc: PRICING.taxExportUsdc,
-            description: "Full 2026 Polymarket FIFO Koinly CSV & detailed accountant ledger (replay-protected)",
+            description: "Full 2026 Polymarket FIFO Koinly CSV, IRS Form 8949 CSV & detailed accountant ledger (replay-protected)",
           },
         ],
       });
@@ -137,6 +276,22 @@ export async function handleApiRequest({
         },
         { "Cache-Control": "public, max-age=15" }
       );
+    }
+
+    if (pathname === "/api/tax-sample") {
+      const rawFormat = String(searchParams.get("format") || "koinly").trim().toLowerCase();
+      const format = rawFormat === "form8949" ? "form8949" : "koinly";
+      const csv = buildTaxSampleCsv(format);
+      return {
+        status: 200,
+        headers: {
+          "Content-Type": "text/csv; charset=utf-8",
+          "Content-Disposition": `attachment; filename="polylens-sample-${format}.csv"`,
+          "Access-Control-Allow-Origin": "*",
+          "Cache-Control": "public, max-age=300",
+        },
+        body: csv,
+      };
     }
 
     if (pathname === "/api/tax-preview") {

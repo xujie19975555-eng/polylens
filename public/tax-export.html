@@ -25,18 +25,20 @@
         <span class="brand-tag">FIFO TAX v3</span>
       </a>
       <nav class="nav-tabs">
-        <a href="/" class="nav-btn" style="text-decoration:none;">← Free Wallet Audit &amp; Whale Tape</a>
+        <a href="/" class="nav-btn" style="text-decoration:none;">← Wallet Audit &amp; Whale Tape</a>
+        <a href="/polymarket-tax-csv-koinly" class="nav-btn" style="text-decoration:none;">Koinly Guide</a>
+        <a href="/polymarket-form-8949-tax" class="nav-btn" style="text-decoration:none;">Form 8949 Guide</a>
       </nav>
     </div>
   </header>
 
   <main class="container" style="padding: 28px 0 48px;">
     <div class="hero">
-      <div class="pill">True /v2/activity FIFO Cost Basis · Official Koinly CSV · Preserves Losses</div>
+      <div class="pill">True /v2/activity FIFO Cost Basis · Koinly &amp; IRS Form 8949 CSV · Preserves Losses</div>
       <h1>2026 <span class="gradient-text">Polymarket</span> FIFO Tax CSV Export</h1>
       <p class="subtitle">
         Reconstructs your chronological Polymarket <code>BUY</code>, <code>SELL</code>, <code>REDEEM</code>, and <code>REWARD</code> history with real transaction hashes.
-        Check your taxable event count free — unlock Koinly &amp; Accountant CSVs for <strong>7 USDC</strong>.
+        Check your taxable event count free — unlock Koinly, IRS Form 8949 &amp; Accountant CSVs for <strong>7 USDC</strong>.
       </p>
 
       <form id="tax-form" class="search-box">
@@ -54,6 +56,62 @@
       </div>
       <div id="tax-error" class="error-banner hidden"></div>
     </div>
+
+    <section class="tables-grid" style="margin-bottom: 18px;">
+      <div class="card" style="border-color: rgba(16,185,129,0.35); background: linear-gradient(135deg, rgba(16,185,129,0.08), var(--surface) 60%);">
+        <div class="pro-eyebrow" style="color: var(--green);">KOINLY LIVE-TESTED PROOF</div>
+        <h2 style="font-size: 17px; margin: 6px 0 8px;">126/126 Non-Zero Rows Imported · 0 Errors</h2>
+        <p class="small muted" style="margin: 0 0 10px;">
+          Verified against a live Koinly Custom Wallet import: <strong>126/126</strong> non-zero rows imported cleanly, <strong>0</strong> import errors, <strong>0</strong> missing-purchase warnings, and all <strong>30</strong> losing positions preserved via signed <code>realized gain</code> rows.
+        </p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <a href="/api/tax-sample?format=koinly" download="polylens-sample-koinly.csv" class="btn-secondary">Sample Koinly CSV</a>
+          <a href="/api/tax-sample?format=form8949" download="polylens-sample-form8949.csv" class="btn-secondary">Sample Form 8949 CSV</a>
+        </div>
+        <p class="small muted" style="margin: 8px 0 0;">
+          Inspect exact CSV columns free before paying 7 USDC · Guides:
+          <a href="/polymarket-tax-csv-koinly" style="color:var(--accent-2);">Koinly CSV</a> ·
+          <a href="/polymarket-form-8949-tax" style="color:var(--accent-2);">IRS Form 8949</a>
+        </p>
+      </div>
+
+      <div class="card">
+        <div class="pro-eyebrow">PRICING &amp; ACCURACY COMPARISON</div>
+        <h2 style="font-size: 17px; margin: 6px 0 8px;">Why Pay 7 USDC Once Instead of $29–$99/yr?</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Method</th>
+                <th>Cost</th>
+                <th>Losing Redemptions</th>
+                <th>Signup</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>PolyLens FIFO v3</strong></td>
+                <td class="pos"><strong>7 USDC one-time</strong></td>
+                <td>Preserved ($0 proceeds)</td>
+                <td>None</td>
+              </tr>
+              <tr>
+                <td>Typical Tax Tools</td>
+                <td class="muted">$29–$99/yr</td>
+                <td class="muted">Manual CTF cleanup</td>
+                <td class="muted">Required</td>
+              </tr>
+              <tr>
+                <td>Raw Polygon Sync</td>
+                <td class="neg">Broken on CTF</td>
+                <td class="neg">Dropped / zero-cost</td>
+                <td class="muted">N/A</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
 
     <div id="tax-loading" class="loading-state hidden">
       <div class="spinner"></div>
@@ -89,10 +147,11 @@
       <div id="tax-paywall" class="card pro-card">
         <div class="pro-left">
           <div class="pro-eyebrow">ONE-TIME UNLOCK · BOUND TO YOUR WALLET · ANTI-REPLAY PROTECTED</div>
-          <h2>Unlock Full FIFO Numbers &amp; Koinly CSV — <span class="accent">7 USDC</span></h2>
+          <h2>Unlock Full FIFO Numbers &amp; Tax CSVs — <span class="accent">7 USDC</span></h2>
           <ul class="pro-list">
             <li>Exact <strong>Gross Gains, Deductible Losses &amp; Net Realized PnL</strong> (<span id="t-locked-note">locked rows</span>)</li>
             <li><strong>Koinly CSV</strong> using official <code>Koinly Date, Amount, Currency, Label (realized gain)</code> format so losses offset gains</li>
+            <li><strong>IRS Form 8949 CSV</strong> with <code>Date Acquired</code> (<code>Various</code> for multi-lot), <code>Short-Term</code> / <code>Long-Term</code>, and $0-proceeds losing redemptions</li>
             <li><strong>Full Accountant CSV</strong> with Shares, FIFO Cost Basis, Proceeds, Realized PnL &amp; Polygonscan TxHashes</li>
           </ul>
           <p class="muted small" style="margin-top:10px;">
@@ -126,6 +185,7 @@
         </div>
         <div style="display:flex; gap:8px; flex-wrap:wrap;">
           <button id="tax-download-koinly-btn" class="btn-primary">Download Koinly CSV</button>
+          <button id="tax-download-form8949-btn" class="btn-secondary">Download IRS Form 8949 CSV</button>
           <button id="tax-download-detail-btn" class="btn-secondary">Accountant CSV</button>
           <button id="tax-print-btn" class="btn-ghost">Print / PDF</button>
         </div>

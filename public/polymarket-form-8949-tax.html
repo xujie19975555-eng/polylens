@@ -1,0 +1,135 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Polymarket IRS Form 8949 &amp; Schedule D Tax Guide (2026 FIFO CSV) — PolyLens</title>
+  <meta name="description" content="How to report Polymarket trades and losing CTF redemptions on IRS Form 8949 and Schedule D using chronological FIFO cost basis, Various multi-lot dates, Short-Term vs Long-Term holding periods, and TurboTax/CPA CSV import." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://polylens-zeta.vercel.app/polymarket-form-8949-tax" />
+  <meta property="og:title" content="Polymarket IRS Form 8949 &amp; Schedule D Tax Guide (2026 FIFO CSV)" />
+  <meta property="og:description" content="Generate an IRS Form 8949-ready Polymarket FIFO CSV with Date Acquired (Various for multi-lot), Short-Term vs Long-Term holding, and $0-proceeds losing redemptions." />
+  <meta property="og:image" content="https://polylens-zeta.vercel.app/og-card.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://polylens-zeta.vercel.app/og-card.png" />
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .guide-wrap { max-width: 820px; margin: 0 auto; }
+    .guide-card { padding: 26px; margin-bottom: 18px; line-height: 1.7; }
+    .guide-card h2 { font-size: 1.25rem; margin: 0 0 12px; color: var(--text); }
+    .guide-card p { margin: 0 0 12px; color: var(--muted); }
+    .guide-card ul, .guide-card ol { margin: 0 0 12px; padding-left: 20px; color: var(--muted); }
+    .guide-card li { margin-bottom: 6px; }
+    .code-sample {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.84rem;
+      color: var(--accent-2);
+      margin: 12px 0;
+      white-space: pre;
+    }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="/" class="brand" style="text-decoration:none; color:inherit;">
+        <span class="brand-dot"></span>
+        <span class="brand-name">PolyLens</span>
+        <span class="brand-tag">FORM 8949 GUIDE</span>
+      </a>
+      <nav class="nav-tabs">
+        <a href="/" class="nav-btn" style="text-decoration:none;">Wallet Audit</a>
+        <a href="/polymarket-tax-csv-koinly" class="nav-btn" style="text-decoration:none;">Koinly Guide</a>
+        <a href="/tax-export" class="nav-btn active" style="text-decoration:none;">2026 Tax CSV (7 USDC)</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" style="padding: 28px 0 56px;">
+    <div class="guide-wrap">
+      <div class="hero" style="text-align:left; margin-bottom: 24px;">
+        <div class="pill">IRS Form 8949 · Schedule D · FIFO Cost Basis · CPA &amp; TurboTax Ready</div>
+        <h1>Reporting <span class="gradient-text">Polymarket</span> on IRS Form 8949 &amp; Schedule D</h1>
+        <p class="subtitle" style="margin: 10px 0 0; max-width: 100%;">
+          Raw Polygon wallet syncs miss Conditional Token Framework (CTF) acquisition dates and drop worthless redemptions. PolyLens reconstructs chronological <code>/v2/activity</code> FIFO lots into an IRS Form 8949 spreadsheet with exact cost basis, holding terms, and $0-proceeds capital losses.
+        </p>
+        <div class="cta-row">
+          <a href="/tax-export" class="btn-primary" style="text-decoration:none;">Generate Form 8949 CSV (Free Preview)</a>
+          <a href="/api/tax-sample?format=form8949" download="polylens-sample-form8949.csv" class="btn-secondary" style="text-decoration:none;">Download Sample Form 8949 CSV</a>
+          <a href="/polymarket-tax-csv-koinly" class="nav-btn" style="text-decoration:none;">Koinly CSV Guide →</a>
+        </div>
+      </div>
+
+      <section class="card guide-card">
+        <h2>1. FIFO Cost Basis &amp; Acquisition Dates ("Various" for Multi-Lot Disposals)</h2>
+        <p>
+          Under First-In, First-Out (FIFO) accounting, every Polymarket <code>BUY</code> opens a USDC cost-basis lot stamped with its exact UTC acquisition timestamp for that specific market and outcome token.
+        </p>
+        <ul>
+          <li><strong>Single-date match:</strong> If a <code>SELL</code> or <code>REDEEM</code> closes shares from one lot (or multiple lots bought on the same UTC day), <code>Date Acquired</code> records that exact <code>YYYY-MM-DD</code> date.</li>
+          <li><strong>Multi-lot across different dates ("Various"):</strong> If one disposal consumes FIFO lots bought on two or more different UTC dates, Form 8949 expects <code>Various</code> in the <code>Date Acquired</code> column—matching IRS instructions for aggregated multi-lot sales.</li>
+          <li><strong>Missing prior history ("Unknown"):</strong> If a disposal occurs without a preceding acquisition lot in your fetched history, PolyLens flags <code>Date Acquired</code> as <code>Unknown</code> rather than fabricating a purchase date.</li>
+        </ul>
+      </section>
+
+      <section class="card guide-card">
+        <h2>2. Short-Term vs. Long-Term Holding Periods</h2>
+        <p>
+          IRS Form 8949 splits capital disposals into <strong>Part I (Short-Term, held 1 year or less)</strong> and <strong>Part II (Long-Term, held more than 1 year)</strong>.
+        </p>
+        <ul>
+          <li><strong>Long-Term:</strong> Assigned when <em>all</em> matched FIFO lots in the disposal were held strictly longer than 365 days (<code>soldAt - acquiredAt &gt; 365 days</code>).</li>
+          <li><strong>Short-Term:</strong> Assigned when matched lots were held 365 days or less (or when a multi-lot disposal mixes short-term and unknown/mixed lots). Most event contracts settle within days or months, making them Short-Term.</li>
+        </ul>
+      </section>
+
+      <section class="card guide-card">
+        <h2>3. Preserving Losing CTF Redemptions ($0 Proceeds Capital Losses)</h2>
+        <p>
+          When a Polymarket outcome resolves against your shares, there is often a $0 USDC payout on-chain. Standard block-explorer CSVs ignore $0 transfers—causing you to pay tax on gross wins without deducting your losses.
+        </p>
+        <ul>
+          <li><strong>Losing <code>REDEEM</code> rows:</strong> PolyLens closes the remaining open FIFO lots with <code>Proceeds (USD) = 0.00</code> and records the full negative <code>Gain or (Loss) (USD)</code> (for example, <code>-120.50</code>) so capital losses properly offset capital gains.</li>
+          <li><strong>Rewards &amp; rebates excluded from 8949:</strong> Liquidity <code>REWARD</code>, <code>MAKER_REBATE</code>, and <code>TAKER_REBATE</code> inflows are ordinary income, not capital asset disposals. PolyLens excludes them from the Form 8949 CSV while keeping them in your <a href="/polymarket-tax-csv-koinly" style="color:var(--accent-2);">Koinly CSV</a> and Accountant Detailed Ledger.</li>
+        </ul>
+      </section>
+
+      <section class="card guide-card">
+        <h2>4. Form 8949 CSV Schema &amp; TurboTax / CPA Import</h2>
+        <p>
+          Every unlocked <a href="/tax-export" style="color:var(--accent-2);">PolyLens 2026 Tax Export</a> (7 USDC one-time) includes the IRS Form 8949 CSV alongside the Koinly CSV and Accountant Ledger:
+        </p>
+        <div class="code-sample">Description of Property,Date Acquired,Date Sold or Disposed,Proceeds (USD),Cost or Other Basis (USD),Adjustment Code,Adjustment Amount (USD),Gain or (Loss) (USD),Term,TxHash
+"Polymarket: Will Candidate A win? (Yes)",2026-01-10,2026-02-14,100.00,62.50,"",0.00,37.50,Short-Term,0x1a2b...
+"Polymarket: Will Team B win? (No)",Various,2026-03-01,0.00,120.50,"",0.00,-120.50,Short-Term,0x3c4d...</div>
+        <ol>
+          <li><strong>Free column check:</strong> Download the <a href="/api/tax-sample?format=form8949" download="polylens-sample-form8949.csv" style="color:var(--accent-2);">4-row Form 8949 sample CSV</a> first to verify column formatting before paying.</li>
+          <li><strong>CPA / Accountant handoff:</strong> Send the Form 8949 CSV and Accountant Detailed Ledger directly to your CPA for Schedule D / Form 8949 attachment.</li>
+          <li><strong>TurboTax &amp; spreadsheet workflows:</strong> Filter by <code>Term</code> (<code>Short-Term</code> for Part I, <code>Long-Term</code> for Part II) to enter line-item totals or import into your tax-prep CSV template / crypto aggregator.</li>
+        </ol>
+        <p class="small muted">
+          Disclaimer: PolyLens generates an informational FIFO tax ledger from public Polymarket activity data and does not provide formal tax, accounting, or legal advice.
+        </p>
+        <div class="cta-row">
+          <a href="/tax-export" class="btn-primary" style="text-decoration:none;">Scan Your Wallet Free →</a>
+          <a href="/polymarket-tax-csv-koinly" class="btn-secondary" style="text-decoration:none;">Read Koinly Import Guide</a>
+          <a href="/" class="btn-ghost" style="text-decoration:none;">Free Wallet Audit</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer container">
+    <span>PolyLens · Polymarket Form 8949 Guide · Informational FIFO ledger only (not tax advice)</span>
+    <span class="mono small muted">Treasury: 0xcC52...7FF6</span>
+  </footer>
+</body>
+</html>

@@ -7,7 +7,12 @@ import { CHAINS, ERC20_TRANSFER_TOPIC, TREASURY_LOWER } from "../src/core/config
 import { verifyUsdcPayment } from "../src/core/payment.js";
 import { claimTxHash } from "../src/core/replay-store.js";
 import { handleApiRequest } from "../src/core/handlers.js";
-import { computeFifoTaxLedger, buildKoinlyCsv } from "../src/core/tax-fifo.js";
+import {
+  computeFifoTaxLedger,
+  buildKoinlyCsv,
+  buildForm8949Csv,
+  buildFifoTaxReport,
+} from "../src/core/tax-fifo.js";
 
 function makeValidReceipt(amountAtomic = 7_000_000n, blockHex = "0x100") {
   const paddedFrom = "0x0000000000000000000000001111111111111111111111111111111111111111";
@@ -86,7 +91,15 @@ test("/api/tax-export returns 402 tx_already_used when replayed for another wall
   const mockDeps = {
     verifyUsdcPayment: async () => ({ ok: true, chain: "base", chainName: "Base", amountUsdc: 7, tokenSymbol: "USDC" }),
     claimTxHash: (opts) => claimTxHash({ ...opts, localStorePath: storePath }),
-    buildFifoTaxReport: async (addr, opts) => ({ tier: "pro_tax", address: addr, year: opts.year, events: [], koinlyCsv: "", detailedCsv: "" }),
+    buildFifoTaxReport: async (addr, opts) => ({
+      tier: "pro_tax",
+      address: addr,
+      year: opts.year,
+      events: [],
+      koinlyCsv: "",
+      detailedCsv: "",
+      form8949Csv: "",
+    }),
     incrementMetric: async () => {},
   };
 
@@ -165,4 +178,210 @@ test("computeFifoTaxLedger computes FIFO cost basis, preserves losing REDEEM, ex
   assert.ok(koinlyCsv.includes(",-30.00,USDC,realized gain,"));
   assert.ok(koinlyCsv.includes(",30.00,USDC,realized gain,"));
   assert.ok(koinlyCsv.includes(",5.00,USDC,reward,"));
+});
+
+test("computeFifoTaxLedger tracks acquiredDate, Various multi-lot, Unknown, soldDate, and Short-Term vs Long-Term", () => {
+  const day = 86400;
+  const buy2025Long = Date.UTC(2025, 0, 10, 10, 0, 0) / 1000;
+  const buy2025Boundary = Date.UTC(2025, 4, 1, 12, 0, 0) / 1000;
+  const buy2026Day1 = Date.UTC(2026, 2, 1, 8, 0, 0) / 1000;
+  const buy2026Day1Evening = Date.UTC(2026, 2, 1, 20, 0, 0) / 1000;
+  const buy2026Day2 = Date.UTC(2026, 2, 5, 14, 0, 0) / 1000;
+  const sell2026 = Date.UTC(2026, 4, 1, 12, 0, 0) / 1000; // exactly 365 days after buy2025Boundary (2025 is non-leap)
+
+  const events = [
+    // 1) Long-Term (> 365 days): 2025-01-10 -> 2026-05-01 (476 days)
+    { type: "TRADE", side: "BUY", token_id: "LT", size: 100, usdc_size: 40, timestamp: buy2025Long, transaction_hash: "0x01", title: "Long Market", outcome: "Yes" },
+    { type: "TRADE", side: "SELL", token_id: "LT", size: 100, usdc_size: 90, timestamp: sell2026, transaction_hash: "0x02", title: "Long Market", outcome: "Yes" },
+    // 2) Exact 365-day boundary (<= 365 days -> Short-Term): 2025-05-01 12:00 -> 2026-05-01 12:00
+    { type: "TRADE", side: "BUY", token_id: "BOUND", size: 50, usdc_size: 25, timestamp: buy2025Boundary, transaction_hash: "0x03", title: "Boundary Market", outcome: "No" },
+    { type: "TRADE", side: "SELL", token_id: "BOUND", size: 50, usdc_size: 40, timestamp: sell2026, transaction_hash: "0x04", title: "Boundary Market", outcome: "No" },
+    // 3) Same-day multi-lot (two buys on 2026-03-01 UTC -> acquiredDate must be "2026-03-01", not "Various")
+    { type: "TRADE", side: "BUY", token_id: "SAMEDAY", size: 40, usdc_size: 20, timestamp: buy2026Day1, transaction_hash: "0x05", title: "Same Day Market", outcome: "Yes" },
+    { type: "TRADE", side: "BUY", token_id: "SAMEDAY", size: 60, usdc_size: 30, timestamp: buy2026Day1Evening, transaction_hash: "0x06", title: "Same Day Market", outcome: "Yes" },
+    { type: "TRADE", side: "SELL", token_id: "SAMEDAY", size: 100, usdc_size: 70, timestamp: sell2026, transaction_hash: "0x07", title: "Same Day Market", outcome: "Yes" },
+    // 4) Multi-lot across different UTC dates -> "Various", Short-Term
+    { type: "TRADE", side: "BUY", token_id: "VAR", size: 50, usdc_size: 20, timestamp: buy2026Day1, transaction_hash: "0x08", title: "Multi Lot Market", outcome: "Yes" },
+    { type: "TRADE", side: "BUY", token_id: "VAR", size: 50, usdc_size: 30, timestamp: buy2026Day2, transaction_hash: "0x09", title: "Multi Lot Market", outcome: "Yes" },
+    { type: "TRADE", side: "SELL", token_id: "VAR", size: 80, usdc_size: 60, timestamp: sell2026, transaction_hash: "0x0a", title: "Multi Lot Market", outcome: "Yes" },
+    // 5) Mixed holding term (>365d lot + <=365d lot) -> "Various" and conservative "Short-Term"
+    { type: "TRADE", side: "BUY", token_id: "MIXED", size: 50, usdc_size: 10, timestamp: buy2025Long, transaction_hash: "0x0b", title: "Mixed Term Market", outcome: "Yes" },
+    { type: "TRADE", side: "BUY", token_id: "MIXED", size: 50, usdc_size: 20, timestamp: buy2026Day2, transaction_hash: "0x0c", title: "Mixed Term Market", outcome: "Yes" },
+    { type: "TRADE", side: "SELL", token_id: "MIXED", size: 100, usdc_size: 50, timestamp: sell2026, transaction_hash: "0x0d", title: "Mixed Term Market", outcome: "Yes" },
+    // 6) Unmatched disposal (no prior BUY lot) -> "Unknown" and "Short-Term"
+    { type: "REDEEM", token_id: "UNK", size: 25, usdc_size: 25, timestamp: sell2026 + day, transaction_hash: "0x0e", title: "Unknown Lot Market", outcome: "Yes" },
+    // 7) Polymarket MERGE event (empty token_id in live v2/activity) must NOT emit fake zero-basis gain
+    { type: "MERGE", token_id: "", size: 1000, usdc_size: 1000, timestamp: sell2026, transaction_hash: "0x0f", title: "Merged Pair", outcome: "" },
+  ];
+
+  const ledger = computeFifoTaxLedger(events, { year: "2026" });
+  const byTx = new Map(ledger.events.map((ev) => [ev.txHash, ev]));
+
+  assert.equal(byTx.get("0x02").acquiredDate, "2025-01-10");
+  assert.equal(byTx.get("0x02").soldDate, "2026-05-01");
+  assert.equal(byTx.get("0x02").holdingTerm, "Long-Term");
+
+  assert.equal(byTx.get("0x04").acquiredDate, "2025-05-01");
+  assert.equal(byTx.get("0x04").soldDate, "2026-05-01");
+  assert.equal(byTx.get("0x04").holdingTerm, "Short-Term");
+
+  assert.equal(byTx.get("0x07").acquiredDate, "2026-03-01");
+  assert.equal(byTx.get("0x07").holdingTerm, "Short-Term");
+
+  assert.equal(byTx.get("0x0a").acquiredDate, "Various");
+  assert.equal(byTx.get("0x0a").soldDate, "2026-05-01");
+  assert.equal(byTx.get("0x0a").holdingTerm, "Short-Term");
+
+  assert.equal(byTx.get("0x0d").kind, "TRADE");
+  assert.equal(byTx.get("0x0d").acquiredDate, "Various");
+  assert.equal(byTx.get("0x0d").holdingTerm, "Short-Term");
+
+  assert.equal(byTx.get("0x0e").acquiredDate, "Unknown");
+  assert.equal(byTx.get("0x0e").soldDate, "2026-05-02");
+  assert.equal(byTx.get("0x0e").holdingTerm, "Short-Term");
+  assert.equal(byTx.has("0x0f"), false);
+});
+
+test("buildForm8949Csv excludes rewards/rebates and preserves losing REDEEMs with negative PnL", () => {
+  const tBuy = Date.UTC(2026, 1, 10, 10, 0, 0) / 1000;
+  const tSell = Date.UTC(2026, 2, 15, 14, 0, 0) / 1000;
+  const tRedeem = Date.UTC(2026, 2, 20, 18, 0, 0) / 1000;
+
+  const ledger = computeFifoTaxLedger(
+    [
+      { type: "TRADE", side: "BUY", token_id: "WIN", size: 100, usdc_size: 40, timestamp: tBuy, transaction_hash: "0xw1", title: 'Market "Win", Inc', outcome: "Yes" },
+      { type: "TRADE", side: "SELL", token_id: "WIN", size: 100, usdc_size: 75, timestamp: tSell, transaction_hash: "0xw2", title: 'Market "Win", Inc', outcome: "Yes" },
+      { type: "TRADE", side: "BUY", token_id: "LOSS", size: 200, usdc_size: 120.5, timestamp: tBuy, transaction_hash: "0xl1", title: "Loss Market", outcome: "No" },
+      { type: "REDEEM", token_id: "LOSS", size: 200, usdc_size: 0, timestamp: tRedeem, transaction_hash: "0xl2", title: "Loss Market", outcome: "No" },
+      { type: "REWARD", size: 10, usdc_size: 10, timestamp: tRedeem, transaction_hash: "0xr1" },
+      { type: "MAKER_REBATE", size: 3.5, usdc_size: 3.5, timestamp: tRedeem, transaction_hash: "0xr2" },
+      { type: "TAKER_REBATE", size: 1.25, usdc_size: 1.25, timestamp: tRedeem, transaction_hash: "0xr3" },
+    ],
+    { year: "2026" }
+  );
+
+  const csv = buildForm8949Csv(ledger.events);
+  const lines = csv.split("\n");
+  assert.equal(
+    lines[0],
+    "Description of Property,Date Acquired,Date Sold or Disposed,Proceeds (USD),Cost or Other Basis (USD),Adjustment Code,Adjustment Amount (USD),Gain or (Loss) (USD),Term,TxHash"
+  );
+  // 2 disposals only (3 ordinary income rows excluded)
+  assert.equal(lines.length, 3);
+  assert.ok(!csv.includes("0xr1"));
+  assert.ok(!csv.includes("0xr2"));
+  assert.ok(!csv.includes("0xr3"));
+
+  // Losing REDEEM row (newest first): Proceeds 0.00, Cost 120.50, Adj empty, Adj Amt 0.00, Gain/Loss -120.50
+  assert.ok(lines[1].includes(",2026-02-10,2026-03-20,0.00,120.50,,0.00,-120.50,Short-Term,0xl2"));
+  // Winning SELL row with quoted title/comma escaping
+  assert.ok(lines[2].includes('"100 sh Market ""Win"", Inc (Yes) [TRADE]"'));
+  assert.ok(lines[2].includes(",2026-02-10,2026-03-15,75.00,40.00,,0.00,35.00,Short-Term,0xw2"));
+});
+
+test("/api/tax-sample returns deterministic 4-row CSV for koinly (default) and form8949 without network calls", async () => {
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("Network call forbidden in /api/tax-sample");
+  };
+
+  try {
+    const rDefault = await handleApiRequest({
+      pathname: "/api/tax-sample",
+      searchParams: new URLSearchParams(),
+      method: "GET",
+    });
+    const rKoinly = await handleApiRequest({
+      pathname: "/api/tax-sample",
+      searchParams: new URLSearchParams("format=koinly"),
+      method: "GET",
+    });
+    assert.equal(rDefault.status, 200);
+    assert.equal(rDefault.headers["Content-Type"], "text/csv; charset=utf-8");
+    assert.equal(rDefault.headers["Content-Disposition"], 'attachment; filename="polylens-sample-koinly.csv"');
+    assert.equal(rDefault.body, rKoinly.body);
+
+    const koinlyLines = rKoinly.body.trim().split("\n");
+    assert.equal(koinlyLines[0], "Koinly Date,Amount,Currency,Label,Description,TxHash");
+    assert.equal(koinlyLines.length, 5); // 1 header + 4 sample rows
+    assert.ok(rKoinly.body.includes(",-120.50,USDC,realized gain,"));
+    assert.ok(rKoinly.body.includes(",12.50,USDC,reward,"));
+
+    const r8949 = await handleApiRequest({
+      pathname: "/api/tax-sample",
+      searchParams: new URLSearchParams("format=form8949"),
+      method: "GET",
+    });
+    assert.equal(r8949.status, 200);
+    assert.equal(r8949.headers["Content-Type"], "text/csv; charset=utf-8");
+    assert.equal(r8949.headers["Content-Disposition"], 'attachment; filename="polylens-sample-form8949.csv"');
+
+    const formLines = r8949.body.trim().split("\n");
+    assert.equal(
+      formLines[0],
+      "Description of Property,Date Acquired,Date Sold or Disposed,Proceeds (USD),Cost or Other Basis (USD),Adjustment Code,Adjustment Amount (USD),Gain or (Loss) (USD),Term,TxHash"
+    );
+    assert.equal(formLines.length, 5); // 1 header + 4 capital disposal rows (reward excluded)
+    assert.ok(r8949.body.includes(",Various,2026-02-14,"));
+    assert.ok(r8949.body.includes(",0.00,120.50,,0.00,-120.50,Short-Term,"));
+    assert.ok(r8949.body.includes(",Long-Term,"));
+    assert.ok(!r8949.body.includes("Polymarket Liquidity Reward"));
+  } finally {
+    globalThis.fetch = prevFetch;
+  }
+});
+
+test("buildFifoTaxReport full:true and /api/tax-export include form8949Csv alongside koinlyCsv and detailedCsv", async () => {
+  const prevFetch = globalThis.fetch;
+  const tsBuy = Date.UTC(2026, 0, 5, 10, 0, 0) / 1000;
+  const tsSell = Date.UTC(2026, 1, 5, 10, 0, 0) / 1000;
+
+  globalThis.fetch = async (url) => {
+    if (String(url).includes("/public-profile")) {
+      return {
+        ok: true,
+        json: async () => ({ proxyWallet: "0x1111111111111111111111111111111111111111", pseudonym: "tester" }),
+      };
+    }
+    return {
+      ok: true,
+      json: async () => ({
+        data: [
+          { type: "TRADE", side: "BUY", token_id: "T1", size: 10, usdc_size: 4, timestamp: tsBuy, transaction_hash: "0xbuy", title: "Sample", outcome: "Yes" },
+          { type: "TRADE", side: "SELL", token_id: "T1", size: 10, usdc_size: 9, timestamp: tsSell, transaction_hash: "0xsell", title: "Sample", outcome: "Yes" },
+          { type: "REWARD", size: 2, usdc_size: 2, timestamp: tsSell, transaction_hash: "0xrew" },
+        ],
+        pagination: { next_cursor: "", has_more: false },
+      }),
+    };
+  };
+
+  try {
+    const report = await buildFifoTaxReport("0x1111111111111111111111111111111111111111", { year: "2026", full: true });
+    assert.ok(typeof report.koinlyCsv === "string" && report.koinlyCsv.includes("Koinly Date"));
+    assert.ok(typeof report.detailedCsv === "string" && report.detailedCsv.includes("Cost Basis USDC"));
+    assert.ok(typeof report.form8949Csv === "string" && report.form8949Csv.includes("Description of Property"));
+    assert.ok(report.form8949Csv.includes(",2026-01-05,2026-02-05,9.00,4.00,,0.00,5.00,Short-Term,0xsell"));
+    assert.ok(!report.form8949Csv.includes("0xrew"));
+
+    const dir = fs.mkdtempSync(path.join(os.tmpdir(), "polylens-export-8949-"));
+    const storePath = path.join(dir, "replay.json");
+    const resp = await handleApiRequest({
+      pathname: "/api/tax-export",
+      searchParams: new URLSearchParams(`address=0x1111111111111111111111111111111111111111&year=2026&tx=${"0x" + "1".repeat(64)}`),
+      method: "GET",
+      deps: {
+        verifyUsdcPayment: async () => ({ ok: true, chain: "base", chainName: "Base", amountUsdc: 7, tokenSymbol: "USDC" }),
+        claimTxHash: (opts) => claimTxHash({ ...opts, localStorePath: storePath }),
+        incrementMetric: async () => {},
+      },
+    });
+    assert.equal(resp.status, 200);
+    const body = JSON.parse(resp.body);
+    assert.equal(body.koinlyCsv, report.koinlyCsv);
+    assert.equal(body.detailedCsv, report.detailedCsv);
+    assert.equal(body.form8949Csv, report.form8949Csv);
+  } finally {
+    globalThis.fetch = prevFetch;
+  }
 });
