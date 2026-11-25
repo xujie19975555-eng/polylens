@@ -1,14 +1,9 @@
-import { TREASURY_ADDRESS } from "../src/core/config.js";
-import { verifyUsdcPayment } from "../src/core/payment.js";
 import {
   analyzeWallet,
   fetchWhaleTape,
   isValidEvmAddress,
 } from "../src/core/polymarket.js";
 
-const PRO_SUBSCRIPTION_USDC = 7;
-const PRO_SUBSCRIPTION_ATOMIC = 7_000_000n;
-const PRO_DURATION_SECONDS = 30 * 24 * 3600;
 const GAMMA_API = "https://gamma-api.polymarket.com";
 
 function fmtUsd(n, signed = false) {
@@ -32,16 +27,33 @@ export function extractMarketSlug(input = "") {
   return raw.replace(/^\/+|\/+$/g, "");
 }
 
+async function defaultResolveProxyWallet(address) {
+  const clean = address.trim().toLowerCase();
+  try {
+    const res = await fetch(`${GAMMA_API}/public-profile?address=${clean}`, {
+      headers: { "User-Agent": "PolyLensBot/3.0" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return clean;
+    const p = await res.json();
+    return String(p?.proxyWallet || clean).toLowerCase();
+  } catch {
+    return clean;
+  }
+}
+
 async function defaultFetchMarketBySlug(slug) {
   const res = await fetch(`${GAMMA_API}/markets?slug=${encodeURIComponent(slug)}`, {
-    headers: { "User-Agent": "PolyLensBot/1.0" },
+    headers: { "User-Agent": "PolyLensBot/3.0" },
+    signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) return null;
   const arr = await res.json();
   let market = Array.isArray(arr) ? arr[0] : null;
   if (!market) {
     const evRes = await fetch(`${GAMMA_API}/events?slug=${encodeURIComponent(slug)}`, {
-      headers: { "User-Agent": "PolyLensBot/1.0" },
+      headers: { "User-Agent": "PolyLensBot/3.0" },
+      signal: AbortSignal.timeout(8000),
     });
     if (evRes.ok) {
       const evArr = await evRes.json();
@@ -70,8 +82,8 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
 
   const auditFn = deps.analyzeWallet || analyzeWallet;
   const whaleFn = deps.fetchWhaleTape || fetchWhaleTape;
-  const verifyFn = deps.verifyUsdcPayment || verifyUsdcPayment;
   const fetchMarketFn = deps.fetchMarketBySlug || defaultFetchMarketBySlug;
+  const resolveProxyFn = deps.resolveProxyWallet || defaultResolveProxyWallet;
   const nowSec = deps.nowSec ?? Math.floor(Date.now() / 1000);
 
   const user = store.getUser(chatId);
@@ -79,20 +91,17 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
 
   if (!cmd || cmd === "/start" || cmd === "/help") {
     return [
-      "PolyLens Whale & Odds Alert Bot",
-      `Tier: ${limits.tier} (limits: ${limits.maxWallets} wallets, ${limits.maxMarkets} markets)`,
+      "PolyLens Whale & Odds Alert Bot (Free Tier: 5 wallets + 5 markets)",
       "",
       "Commands:",
       "/audit <0xWallet> — Instant PnL, rank, win rate & fees",
       "/whale [minUsd] — Top 5 live Polymarket whale bets",
-      "/watch <0xWallet> [label] — Alert on new trades by a whale",
+      "/watch <0xWallet> [label] — Alert on new trades (resolves EOA -> Proxy)",
       "/watchmarket <slug-or-url> [pct] — Alert on odds swing (default 5%)",
       "/unwatch <0xWallet-or-slug> — Remove an alert",
-      "/list — View active alerts & subscription status",
-      `/upgrade <0xTxHash> — Unlock 20+20 alerts for 30d (${PRO_SUBSCRIPTION_USDC} USDC on Base/Polygon)`,
+      "/list — View active alerts",
       "",
-      `Treasury: ${TREASURY_ADDRESS}`,
-      "Web App: https://polylens-zeta.vercel.app",
+      "2026 FIFO Tax CSV (7 USDC): https://polylens-zeta.vercel.app/tax-export",
     ].join("\n");
   }
 
@@ -111,7 +120,7 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
       s.redeemableValue > 0.5
         ? `Unclaimed Redeemable: ${fmtUsd(s.redeemableValue)} (${s.redeemableCount} positions)`
         : "",
-      `Full web report: https://polylens-zeta.vercel.app/?w=${s.address}`,
+      `Free web report: https://polylens-zeta.vercel.app/?w=${s.address}`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -129,24 +138,29 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
   }
 
   if (cmd === "/watch") {
-    const addr = (args[0] || "").trim().toLowerCase();
-    if (!isValidEvmAddress(addr)) {
+    const inputAddr = (args[0] || "").trim().toLowerCase();
+    if (!isValidEvmAddress(inputAddr)) {
       return "Usage: /watch <0xWalletAddress> [optionalLabel]";
     }
-    if (user.watchedWallets.some((w) => w.address === addr)) {
-      return `Already watching ${addr}.`;
+    const proxyAddr = await resolveProxyFn(inputAddr);
+    if (user.watchedWallets.some((w) => w.address === proxyAddr || w.inputAddress === inputAddr)) {
+      return `Already watching ${proxyAddr}.`;
     }
     if (user.watchedWallets.length >= limits.maxWallets) {
-      return [
-        `Limit reached (${limits.tier}: max ${limits.maxWallets} watched wallet).`,
-        `Send ${PRO_SUBSCRIPTION_USDC} USDC (Base or Polygon) to ${TREASURY_ADDRESS} and run:`,
-        "/upgrade <0xTxHash>",
-      ].join("\n");
+      return `Limit reached (max ${limits.maxWallets} watched wallets). Use /unwatch <addr> first.`;
     }
-    const label = args.slice(1).join(" ").trim() || `${addr.slice(0, 6)}...${addr.slice(-4)}`;
-    user.watchedWallets.push({ address: addr, label, lastTxHash: "", lastTs: nowSec });
+    const label = args.slice(1).join(" ").trim() || `${proxyAddr.slice(0, 6)}...${proxyAddr.slice(-4)}`;
+    user.watchedWallets.push({
+      address: proxyAddr,
+      inputAddress: inputAddr,
+      label,
+      lastTxHash: "",
+      lastTs: nowSec,
+    });
     store.save();
-    return `Watching whale ${label} (${addr}). You'll get alerts on new trades.`;
+    return proxyAddr !== inputAddr
+      ? `Watching whale ${label} (resolved EOA ${inputAddr.slice(0, 8)}... -> Proxy ${proxyAddr}).`
+      : `Watching whale ${label} (${proxyAddr}). You'll get alerts on new trades.`;
   }
 
   if (cmd === "/watchmarket") {
@@ -158,11 +172,7 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
       return `Already watching market ${slug}.`;
     }
     if (user.watchedMarkets.length >= limits.maxMarkets) {
-      return [
-        `Limit reached (${limits.tier}: max ${limits.maxMarkets} watched market).`,
-        `Send ${PRO_SUBSCRIPTION_USDC} USDC (Base or Polygon) to ${TREASURY_ADDRESS} and run:`,
-        "/upgrade <0xTxHash>",
-      ].join("\n");
+      return `Limit reached (max ${limits.maxMarkets} watched markets). Use /unwatch <slug> first.`;
     }
     const thresholdPct = Math.max(1, Math.min(50, Number(args[1] || 5) || 5));
     const info = await fetchMarketFn(slug);
@@ -176,7 +186,7 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
       lastPrice: info.yesPrice,
     });
     store.save();
-    return `Watching "${info.title}" (current Yes ${(info.yesPrice * 100).toFixed(1)}c, alert >= ${thresholdPct}% swing).`;
+    return `Watching "${info.title}" (current ${(info.yesPrice * 100).toFixed(1)}c, alert >= ${thresholdPct}% swing).`;
   }
 
   if (cmd === "/unwatch") {
@@ -184,7 +194,9 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
     if (!target) return "Usage: /unwatch <0xWallet-or-marketSlug>";
     const wBefore = user.watchedWallets.length;
     const mBefore = user.watchedMarkets.length;
-    user.watchedWallets = user.watchedWallets.filter((w) => w.address.toLowerCase() !== target);
+    user.watchedWallets = user.watchedWallets.filter(
+      (w) => w.address.toLowerCase() !== target && (w.inputAddress || "").toLowerCase() !== target
+    );
     user.watchedMarkets = user.watchedMarkets.filter((m) => m.slug.toLowerCase() !== target);
     if (user.watchedWallets.length === wBefore && user.watchedMarkets.length === mBefore) {
       return `No matching alert found for "${target}".`;
@@ -194,7 +206,6 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
   }
 
   if (cmd === "/list") {
-    const expiry = limits.tier === "PRO" ? new Date(user.proUntil * 1000).toISOString().slice(0, 10) : "Free Tier";
     const wallets = user.watchedWallets.length
       ? user.watchedWallets.map((w) => `- ${w.label} (${w.address})`).join("\n")
       : "- None";
@@ -202,7 +213,7 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
       ? user.watchedMarkets.map((m) => `- ${m.title} (${m.slug}, >=${m.thresholdPct}%)`).join("\n")
       : "- None";
     return [
-      `Subscription: ${limits.tier} (${expiry})`,
+      `Tier: FREE (5 wallets + 5 markets included)`,
       `Watched Wallets (${user.watchedWallets.length}/${limits.maxWallets}):`,
       wallets,
       `Watched Markets (${user.watchedMarkets.length}/${limits.maxMarkets}):`,
@@ -211,31 +222,7 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
   }
 
   if (cmd === "/upgrade") {
-    const txHash = (args[0] || "").trim();
-    if (!/^0x[0-9a-fA-F]{64}$/.test(txHash)) {
-      return [
-        `Send ${PRO_SUBSCRIPTION_USDC} USDC on Base or Polygon to:`,
-        TREASURY_ADDRESS,
-        "Then run: /upgrade <0xTransactionHash>",
-      ].join("\n");
-    }
-    if (store.isTxUsed(txHash)) {
-      return "This transaction hash has already been redeemed.";
-    }
-    const res = await verifyFn({
-      txHash,
-      chain: "auto",
-      minAmountAtomic: PRO_SUBSCRIPTION_ATOMIC,
-      maxAgeSeconds: 30 * 24 * 3600,
-    });
-    if (!res.ok) {
-      return `Verification failed: ${res.message}`;
-    }
-    const baseTime = Math.max(nowSec, user.proUntil || 0);
-    user.proUntil = baseTime + PRO_DURATION_SECONDS;
-    store.markTxUsed(txHash, chatId, res.chain);
-    const untilDate = new Date(user.proUntil * 1000).toISOString().slice(0, 10);
-    return `PRO unlocked! Verified ${res.amountUsdc} ${res.tokenSymbol} on ${res.chainName}. Active until ${untilDate} (20 wallets + 20 markets).`;
+    return "Paid TG upgrades are currently paused in v3.0 — you already have 5 free wallet + 5 free market alert slots included! Need 2026 FIFO Tax CSVs? Visit https://polylens-zeta.vercel.app/tax-export";
   }
 
   return "Unknown command. Send /help to see all commands.";

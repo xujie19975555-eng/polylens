@@ -6,9 +6,10 @@ const ADDRESS_RE = /^0x[0-9a-fA-F]{40}$/;
 async function fetchJson(url) {
   const res = await fetch(url, {
     headers: {
-      "User-Agent": "PolyLens/1.0",
+      "User-Agent": "PolyLens/3.0",
       Accept: "application/json",
     },
+    signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) {
     throw new Error(`Upstream ${res.status} for ${url}`);

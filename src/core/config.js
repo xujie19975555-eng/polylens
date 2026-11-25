@@ -21,6 +21,7 @@ export const CHAINS = {
     chainIdHex: "0x2105",
     explorerTx: "https://basescan.org/tx/",
     rpcs: [
+      ...(process.env.BASE_RPC_URL ? [process.env.BASE_RPC_URL] : []),
       "https://mainnet.base.org",
       "https://base-rpc.publicnode.com",
     ],
@@ -40,6 +41,7 @@ export const CHAINS = {
     chainIdHex: "0x89",
     explorerTx: "https://polygonscan.com/tx/",
     rpcs: [
+      ...(process.env.POLYGON_RPC_URL ? [process.env.POLYGON_RPC_URL] : []),
       "https://polygon-bor-rpc.publicnode.com",
       "https://polygon-rpc.com",
     ],

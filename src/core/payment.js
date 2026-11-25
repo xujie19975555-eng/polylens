@@ -7,7 +7,7 @@ import {
 
 const TX_HASH_RE = /^0x[0-9a-fA-F]{64}$/;
 
-async function rpcCall(rpcs, method, params) {
+async function defaultRpcCall(rpcs, method, params) {
   let lastErr;
   for (const rpc of rpcs) {
     try {
@@ -15,6 +15,7 @@ async function rpcCall(rpcs, method, params) {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
+        signal: AbortSignal.timeout(8000),
       });
       if (!res.ok) {
         lastErr = new Error(`RPC HTTP ${res.status} from ${rpc}`);
@@ -64,8 +65,14 @@ export function extractUsdcTransferToTreasury(receipt, chainCfg) {
   return best;
 }
 
-async function verifyOnSingleChain(txHash, chainCfg, minAmountAtomic, maxAgeSeconds) {
-  const receipt = await rpcCall(chainCfg.rpcs, "eth_getTransactionReceipt", [txHash]);
+export async function verifyOnSingleChain(
+  txHash,
+  chainCfg,
+  minAmountAtomic,
+  maxAgeSeconds,
+  { rpcCall = defaultRpcCall, minConfirmations = 2 } = {}
+) {
+  const receipt = await rpcCall(chainCfg.rpcs, "eth_getTransactionReceipt", [txHash], chainCfg.key);
   if (!receipt) {
     return { ok: false, reason: "not_found", chain: chainCfg.key };
   }
@@ -91,27 +98,59 @@ async function verifyOnSingleChain(txHash, chainCfg, minAmountAtomic, maxAgeSeco
     };
   }
 
-  let blockTimestamp = null;
+  const receiptBlock = parseInt(receipt.blockNumber, 16);
+  if (!Number.isFinite(receiptBlock)) {
+    return { ok: false, reason: "block_timestamp_unavailable", chain: chainCfg.key };
+  }
+
+  // Require >= minConfirmations (e.g. 2 confirmations)
+  const latestHex = await rpcCall(chainCfg.rpcs, "eth_blockNumber", [], chainCfg.key);
+  const latestBlock = parseInt(latestHex, 16);
+  if (!Number.isFinite(latestBlock)) {
+    return { ok: false, reason: "rpc_error", chain: chainCfg.key, message: "Invalid latest block number" };
+  }
+  const confirmations = latestBlock - receiptBlock + 1;
+  if (confirmations < minConfirmations) {
+    return {
+      ok: false,
+      reason: "insufficient_confirmations",
+      chain: chainCfg.key,
+      confirmations,
+      requiredConfirmations: minConfirmations,
+    };
+  }
+
+  // Fail-closed block timestamp check
+  let block;
   try {
-    const block = await rpcCall(chainCfg.rpcs, "eth_getBlockByNumber", [
-      receipt.blockNumber,
-      false,
-    ]);
-    if (block && block.timestamp) {
-      blockTimestamp = parseInt(block.timestamp, 16);
-      const age = Math.floor(Date.now() / 1000) - blockTimestamp;
-      if (maxAgeSeconds && age > maxAgeSeconds) {
-        return {
-          ok: false,
-          reason: "payment_expired",
-          chain: chainCfg.key,
-          ageSeconds: age,
-          maxAgeSeconds,
-        };
-      }
-    }
-  } catch {
-    // Non-fatal if block timestamp lookup fails on public RPC
+    block = await rpcCall(chainCfg.rpcs, "eth_getBlockByNumber", [receipt.blockNumber, false], chainCfg.key);
+  } catch (err) {
+    return {
+      ok: false,
+      reason: "block_timestamp_unavailable",
+      chain: chainCfg.key,
+      message: err?.message || "Failed to fetch block timestamp",
+    };
+  }
+  if (!block || !block.timestamp) {
+    return {
+      ok: false,
+      reason: "block_timestamp_unavailable",
+      chain: chainCfg.key,
+      message: "Block timestamp missing from RPC response",
+    };
+  }
+
+  const blockTimestamp = parseInt(block.timestamp, 16);
+  const age = Math.floor(Date.now() / 1000) - blockTimestamp;
+  if (maxAgeSeconds && age > maxAgeSeconds) {
+    return {
+      ok: false,
+      reason: "payment_expired",
+      chain: chainCfg.key,
+      ageSeconds: age,
+      maxAgeSeconds,
+    };
   }
 
   return {
@@ -121,7 +160,8 @@ async function verifyOnSingleChain(txHash, chainCfg, minAmountAtomic, maxAgeSeco
     chainId: chainCfg.chainId,
     txHash,
     explorerUrl: `${chainCfg.explorerTx}${txHash}`,
-    blockNumber: parseInt(receipt.blockNumber, 16),
+    blockNumber: receiptBlock,
+    confirmations,
     blockTimestamp,
     ...transfer,
     amountAtomic: transfer.amountAtomic.toString(),
@@ -133,6 +173,8 @@ export async function verifyUsdcPayment({
   chain = "auto",
   minAmountAtomic,
   maxAgeSeconds = 30 * 24 * 3600,
+  minConfirmations = 2,
+  rpcCall = defaultRpcCall,
 }) {
   if (!txHash || !TX_HASH_RE.test(txHash.trim())) {
     return {
@@ -149,21 +191,31 @@ export async function verifyUsdcPayment({
 
   const results = await Promise.all(
     chainKeys.map((k) =>
-      verifyOnSingleChain(cleanTx, CHAINS[k], minAmountAtomic, maxAgeSeconds).catch(
-        (err) => ({ ok: false, reason: "rpc_error", chain: k, message: err.message })
-      )
+      verifyOnSingleChain(cleanTx, CHAINS[k], minAmountAtomic, maxAgeSeconds, {
+        rpcCall,
+        minConfirmations,
+      }).catch((err) => ({ ok: false, reason: "rpc_error", chain: k, message: err.message }))
     )
   );
 
   const success = results.find((r) => r.ok);
   if (success) return success;
 
-  const specific =
-    results.find((r) =>
-      ["insufficient_amount", "no_usdc_transfer_to_treasury", "tx_reverted", "payment_expired"].includes(
-        r.reason
-      )
-    ) || results[0];
+  const priorityOrder = [
+    "insufficient_amount",
+    "no_usdc_transfer_to_treasury",
+    "tx_reverted",
+    "payment_expired",
+    "insufficient_confirmations",
+    "block_timestamp_unavailable",
+    "rpc_error",
+  ];
+  let specific = null;
+  for (const reason of priorityOrder) {
+    specific = results.find((r) => r.reason === reason);
+    if (specific) break;
+  }
+  specific = specific || results[0];
 
   const messages = {
     not_found:
@@ -172,6 +224,8 @@ export async function verifyUsdcPayment({
     no_usdc_transfer_to_treasury: `No official USDC transfer to ${TREASURY_ADDRESS} found in this transaction.`,
     insufficient_amount: `Received ${specific.receivedUsdc ?? 0} USDC, but at least ${specific.requiredUsdc} USDC is required.`,
     payment_expired: "Payment transaction is older than the allowed validity window.",
+    insufficient_confirmations: `Waiting for ${specific.requiredConfirmations ?? 2} block confirmations (currently ${specific.confirmations ?? 1}). Retry in a few seconds.`,
+    block_timestamp_unavailable: "Unable to verify transaction block timestamp on RPC. Please retry.",
     rpc_error: `Unable to reach blockchain RPC: ${specific.message || "unknown error"}`,
   };
 
@@ -189,7 +243,6 @@ export function buildPaymentRequiredResponse({
 }) {
   return {
     error: "payment_required",
-    protocol: "x402-evm-usdc-v1",
     resource,
     description,
     priceUsdc,
@@ -210,19 +263,21 @@ export function buildPaymentRequiredResponse({
         chainId: CHAINS.polygon.chainId,
         asset: CHAINS.polygon.defaultToken,
         symbol: "USDC",
-        altAssets: [
-          {
-            symbol: "USDC.e",
-            address: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
-          },
-        ],
+        maxAmountRequired: priceAtomic.toString(),
+        payTo: TREASURY_ADDRESS,
+      },
+      {
+        scheme: "exact",
+        network: "polygon",
+        chainId: CHAINS.polygon.chainId,
+        asset: "0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174",
+        symbol: "USDC.e",
         maxAmountRequired: priceAtomic.toString(),
         payTo: TREASURY_ADDRESS,
       },
     ],
     howToPay: {
       human: `Send ${priceUsdc} USDC on Base or Polygon to ${TREASURY_ADDRESS}, then submit the tx hash.`,
-      agent: `Send ${priceUsdc} USDC on Base (chainId 8453) or Polygon (chainId 137) to ${TREASURY_ADDRESS} and retry this request with header 'X-Payment-Tx: <0xTxHash>' (or query '?tx=<0xTxHash>&chain=base').`,
     },
   };
 }

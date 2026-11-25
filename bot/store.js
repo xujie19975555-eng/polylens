@@ -21,13 +21,22 @@ export class BotStore {
         usedTxHashes: parsed.usedTxHashes || {},
       };
     } catch {
+      // Back up corrupt state instead of silently wiping user subscriptions
+      const backup = `${this.filePath}.corrupt.${Date.now()}`;
+      try {
+        fs.copyFileSync(this.filePath, backup);
+      } catch {
+        // ignore backup error
+      }
       this.state = { users: {}, usedTxHashes: {} };
     }
   }
 
   save() {
     fs.mkdirSync(path.dirname(this.filePath), { recursive: true });
-    fs.writeFileSync(this.filePath, JSON.stringify(this.state, null, 2) + "\n");
+    const tmp = `${this.filePath}.${process.pid}.${Date.now()}.tmp`;
+    fs.writeFileSync(tmp, JSON.stringify(this.state, null, 2) + "\n");
+    fs.renameSync(tmp, this.filePath);
   }
 
   getUser(chatId) {
@@ -36,7 +45,6 @@ export class BotStore {
       this.state.users[key] = {
         chatId: key,
         proUntil: 0,
-        whaleStreamMinUsd: 0,
         watchedWallets: [],
         watchedMarkets: [],
       };
@@ -44,27 +52,9 @@ export class BotStore {
     return this.state.users[key];
   }
 
-  isPro(chatId, nowSec = Math.floor(Date.now() / 1000)) {
-    return (this.getUser(chatId).proUntil || 0) > nowSec;
-  }
-
-  getLimits(chatId, nowSec = Math.floor(Date.now() / 1000)) {
-    return this.isPro(chatId, nowSec)
-      ? { maxWallets: 20, maxMarkets: 20, tier: "PRO" }
-      : { maxWallets: 1, maxMarkets: 1, tier: "FREE" };
-  }
-
-  isTxUsed(txHash) {
-    return Boolean(this.state.usedTxHashes[String(txHash || "").toLowerCase()]);
-  }
-
-  markTxUsed(txHash, chatId, chain) {
-    this.state.usedTxHashes[String(txHash).toLowerCase()] = {
-      chatId: String(chatId),
-      chain,
-      usedAt: Math.floor(Date.now() / 1000),
-    };
-    this.save();
+  getLimits() {
+    // V3: Freeze paid TG upgrades while cloud persistence is pending; give 5 free slots
+    return { maxWallets: 5, maxMarkets: 5, tier: "FREE" };
   }
 
   allUsers() {

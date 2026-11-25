@@ -1,6 +1,6 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { CHAINS, ERC20_TRANSFER_TOPIC, PRICING, TREASURY_ADDRESS, TREASURY_LOWER } from "../src/core/config.js";
+import { CHAINS, ERC20_TRANSFER_TOPIC, TREASURY_ADDRESS, TREASURY_LOWER } from "../src/core/config.js";
 import { extractUsdcTransferToTreasury, buildPaymentRequiredResponse } from "../src/core/payment.js";
 import { inferCategory, buildPositionsCsv, isValidEvmAddress } from "../src/core/polymarket.js";
 import { handleApiRequest } from "../src/core/handlers.js";
@@ -47,18 +47,18 @@ test("rejects spoofed token contract or wrong recipient", () => {
   assert.equal(extractUsdcTransferToTreasury(fakeReceipt, CHAINS.base), null);
 });
 
-test("returns HTTP 402 with x402 payment metadata when unpaid", async () => {
-  const resp = await handleApiRequest({
-    pathname: "/api/v1/wallet/deep",
-    searchParams: new URLSearchParams("address=0x2c335066fe58fe9237c3d3dc7b275c2a034a0563"),
-    method: "GET",
-    headers: {},
-  });
-  assert.equal(resp.status, 402);
-  const body = JSON.parse(resp.body);
-  assert.equal(body.payTo, TREASURY_ADDRESS);
-  assert.equal(body.priceUsdc, PRICING.x402CallUsdc);
-  assert.equal(body.accepts.length, 2);
+test("returns HTTP 410 Gone for retired /api/v1/ and /api/pro-report endpoints", async () => {
+  for (const p of ["/api/v1/wallet/deep", "/api/pro-report", "/api/v1/markets/movers", "/api/v1/whale-tape"]) {
+    const resp = await handleApiRequest({
+      pathname: p,
+      searchParams: new URLSearchParams("address=0x2c335066fe58fe9237c3d3dc7b275c2a034a0563"),
+      method: "GET",
+      headers: {},
+    });
+    assert.equal(resp.status, 410);
+    const body = JSON.parse(resp.body);
+    assert.equal(body.error, "endpoint_retired");
+  }
 });
 
 test("infers categories and builds valid CSV", () => {
@@ -88,37 +88,24 @@ test("infers categories and builds valid CSV", () => {
   assert.ok(csv.includes("54.75"));
 });
 
-test("x402 discovery manifest exposes treasury and endpoints", async () => {
+test("health manifest exposes v3.0.0 treasury and tax-export", async () => {
   const resp = await handleApiRequest({
-    pathname: "/.well-known/x402.json",
+    pathname: "/api/health",
     searchParams: new URLSearchParams(),
     method: "GET",
     headers: {},
   });
   assert.equal(resp.status, 200);
   const data = JSON.parse(resp.body);
+  assert.equal(data.version, "3.0.0");
   assert.equal(data.treasury, TREASURY_ADDRESS);
-  assert.ok(data.endpoints.some((e) => e.path.includes("/api/v1/whale-tape")));
-  assert.ok(data.endpoints.length >= 6);
+  assert.ok(data.endpoints.some((e) => e.path.includes("/api/tax-export")));
   const payPayload = buildPaymentRequiredResponse({
-    resource: "/api/pro-report",
+    resource: "/api/tax-export",
     description: "test",
-    priceUsdc: 3,
-    priceAtomic: 3_000_000n,
+    priceUsdc: 7,
+    priceAtomic: 7_000_000n,
   });
   assert.equal(payPayload.payTo, TREASURY_ADDRESS);
-});
-
-test("returns HTTP 402 for unpaid /api/v1/whale-tape", async () => {
-  const resp = await handleApiRequest({
-    pathname: "/api/v1/whale-tape",
-    searchParams: new URLSearchParams("minUsd=5000"),
-    method: "GET",
-    headers: {},
-  });
-  assert.equal(resp.status, 402);
-  const body = JSON.parse(resp.body);
-  assert.equal(body.payTo, TREASURY_ADDRESS);
-  assert.equal(body.priceUsdc, PRICING.x402CallUsdc);
-  assert.equal(body.resource, "/api/v1/whale-tape");
+  assert.equal(payPayload.accepts.length, 3);
 });

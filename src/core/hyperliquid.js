@@ -5,9 +5,10 @@ async function hlPost(payload) {
     method: "POST",
     headers: {
       "Content-Type": "application/json",
-      "User-Agent": "PolyLens/2.0",
+      "User-Agent": "PolyLens/3.0",
     },
     body: JSON.stringify(payload),
+    signal: AbortSignal.timeout(8000),
   });
   if (!res.ok) {
     throw new Error(`Hyperliquid HTTP ${res.status}`);

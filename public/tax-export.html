@@ -3,12 +3,12 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PolyLens — 2026 Polymarket Tax CSV Export &amp; Realized PnL Statement</title>
-  <meta name="description" content="Generate a Koinly/CoinTracker-ready 2026 Polymarket Tax CSV and printable realized PnL &amp; fee statement in seconds. Non-custodial Base &amp; Polygon USDC settlement." />
+  <title>PolyLens — 2026 Polymarket FIFO Tax CSV &amp; Koinly Export</title>
+  <meta name="description" content="Generate an exact FIFO Polymarket Tax CSV formatted for Koinly (with gains, losses, and real tx hashes) from full activity history. Non-custodial Base &amp; Polygon USDC settlement." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://polylens-zeta.vercel.app/tax-export" />
-  <meta property="og:title" content="PolyLens — 2026 Polymarket Tax CSV &amp; PnL Statement" />
-  <meta property="og:description" content="Preview your 2026 Polymarket realized gains, losses &amp; deductible fees free — export full Koinly-ready Tax CSV for 7 USDC." />
+  <meta property="og:title" content="PolyLens — 2026 Polymarket FIFO Tax CSV &amp; Koinly Export" />
+  <meta property="og:description" content="Preview your 2026 Polymarket FIFO taxable events free — export full Koinly-ready CSV &amp; accountant ledger for 7 USDC." />
   <meta property="og:image" content="https://polylens-zeta.vercel.app/og-card.png" />
   <meta name="twitter:card" content="summary_large_image" />
   <meta name="twitter:image" content="https://polylens-zeta.vercel.app/og-card.png" />
@@ -22,21 +22,21 @@
       <a href="/" class="brand" style="text-decoration:none; color:inherit;">
         <span class="brand-dot"></span>
         <span class="brand-name">PolyLens</span>
-        <span class="brand-tag">TAX EDITION</span>
+        <span class="brand-tag">FIFO TAX v3</span>
       </a>
       <nav class="nav-tabs">
-        <a href="/" class="nav-btn" style="text-decoration:none;">← Back to Wallet &amp; Whale Tape</a>
+        <a href="/" class="nav-btn" style="text-decoration:none;">← Free Wallet Audit &amp; Whale Tape</a>
       </nav>
     </div>
   </header>
 
   <main class="container" style="padding: 28px 0 48px;">
     <div class="hero">
-      <div class="pill">Koinly / CoinTracker CSV Format · 2026 &amp; 2025 Supported · Zero Sign-Up</div>
-      <h1>2026 <span class="gradient-text">Polymarket</span> Tax Ledger &amp; CSV Export</h1>
+      <div class="pill">True /v2/activity FIFO Cost Basis · Official Koinly CSV · Preserves Losses</div>
+      <h1>2026 <span class="gradient-text">Polymarket</span> FIFO Tax CSV Export</h1>
       <p class="subtitle">
-        Preview your settled realized gains, losses, and deductible entry fees free.
-        Unlock the full up-to-500-event Koinly-ready CSV &amp; printable PDF statement for <strong>7 USDC</strong>.
+        Reconstructs your chronological Polymarket <code>BUY</code>, <code>SELL</code>, <code>REDEEM</code>, and <code>REWARD</code> history with real transaction hashes.
+        Check your taxable event count free — unlock Koinly &amp; Accountant CSVs for <strong>7 USDC</strong>.
       </p>
 
       <form id="tax-form" class="search-box">
@@ -46,53 +46,58 @@
           <option value="2025">2025</option>
           <option value="all">All Years</option>
         </select>
-        <button type="submit" id="tax-btn" class="btn-primary">Preview Tax Summary</button>
+        <button type="submit" id="tax-btn" class="btn-primary">Scan Tax Events</button>
       </form>
       <div class="whale-row">
-        <span class="whale-label">Try sample whale:</span>
-        <button type="button" class="chip" id="sample-tax-btn">0x2c33...0563 (Rank #1)</button>
+        <span class="whale-label">Try sample trader:</span>
+        <button type="button" class="chip" id="sample-tax-btn">ukowna (0x8fbc...5c63)</button>
       </div>
       <div id="tax-error" class="error-banner hidden"></div>
     </div>
 
     <div id="tax-loading" class="loading-state hidden">
       <div class="spinner"></div>
-      <p>Aggregating settled &amp; redeemable Polymarket positions...</p>
+      <p>Fetching chronological /v2/activity history and computing FIFO cost basis...</p>
     </div>
 
     <div id="tax-results" class="hidden">
+      <div id="tax-truncation-alert" class="alert-banner hidden" style="border-color: rgba(245,158,11,0.45); background: rgba(245,158,11,0.12); color: #fde68a;"></div>
+
       <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom: 16px;">
+        <div class="card kpi">
+          <div class="muted-label">TAXABLE EVENTS (<span id="t-year-lbl">2026</span>)</div>
+          <div id="t-events-count" class="kpi-value">—</div>
+          <div id="t-wl-split" class="kpi-sub">—</div>
+        </div>
         <div class="card kpi">
           <div class="muted-label">NET REALIZED PNL</div>
           <div id="t-net" class="kpi-value">—</div>
-          <div id="t-count" class="kpi-sub">—</div>
+          <div id="t-direction" class="kpi-sub">—</div>
         </div>
         <div class="card kpi">
-          <div class="muted-label">GROSS GAINS</div>
-          <div id="t-gains" class="kpi-value pos">—</div>
-          <div class="kpi-sub">Settled winning positions</div>
+          <div class="muted-label">GROSS GAINS / LOSSES</div>
+          <div id="t-gains" class="kpi-value">—</div>
+          <div id="t-losses" class="kpi-sub">—</div>
         </div>
         <div class="card kpi">
-          <div class="muted-label">GROSS LOSSES</div>
-          <div id="t-losses" class="kpi-value neg">—</div>
-          <div class="kpi-sub">Settled losing positions</div>
-        </div>
-        <div class="card kpi">
-          <div class="muted-label">DEDUCTIBLE FEES</div>
-          <div id="t-fees" class="kpi-value warn">—</div>
-          <div id="t-after-fees" class="kpi-sub">—</div>
+          <div class="muted-label">REWARDS &amp; REBATES</div>
+          <div id="t-rewards" class="kpi-value">—</div>
+          <div id="t-meta" class="kpi-sub">—</div>
         </div>
       </div>
 
       <div id="tax-paywall" class="card pro-card">
         <div class="pro-left">
-          <div class="pro-eyebrow">INSTANT ON-CHAIN UNLOCK · BASE &amp; POLYGON USDC</div>
-          <h2>Export Full Tax CSV &amp; Statement — <span class="accent">7 USDC</span></h2>
+          <div class="pro-eyebrow">ONE-TIME UNLOCK · BOUND TO YOUR WALLET · ANTI-REPLAY PROTECTED</div>
+          <h2>Unlock Full FIFO Numbers &amp; Koinly CSV — <span class="accent">7 USDC</span></h2>
           <ul class="pro-list">
-            <li>Up to 500 settled &amp; redeemable positions (<span id="t-locked-note">additional rows locked</span>)</li>
-            <li>Koinly / CoinTracker compatible CSV columns (<code>Date, Sent, Received, Fee, Label, Market</code>)</li>
-            <li>Printable PDF-ready statement for your accountant</li>
+            <li>Exact <strong>Gross Gains, Deductible Losses &amp; Net Realized PnL</strong> (<span id="t-locked-note">locked rows</span>)</li>
+            <li><strong>Koinly CSV</strong> using official <code>Koinly Date, Amount, Currency, Label (realized gain)</code> format so losses offset gains</li>
+            <li><strong>Full Accountant CSV</strong> with Shares, FIFO Cost Basis, Proceeds, Realized PnL &amp; Polygonscan TxHashes</li>
           </ul>
+          <p class="muted small" style="margin-top:10px;">
+            Informational crypto ledger only — not formal tax advice. <strong>Full 7 USDC refund</strong> if your CSV fails to import into Koinly.
+          </p>
         </div>
         <div class="pro-right">
           <div class="chain-toggle">
@@ -116,30 +121,32 @@
 
       <div id="tax-unlocked-bar" class="card unlocked-bar hidden">
         <div>
-          <strong>Full Tax Ledger Unlocked!</strong>
+          <strong>Full 2026 FIFO Tax Ledger Unlocked!</strong>
           <span id="tax-tx-info" class="muted small"></span>
         </div>
-        <div style="display:flex; gap:8px;">
-          <button id="tax-download-csv-btn" class="btn-primary">Download Tax CSV</button>
-          <button id="tax-print-btn" class="btn-secondary">Print / Save PDF</button>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button id="tax-download-koinly-btn" class="btn-primary">Download Koinly CSV</button>
+          <button id="tax-download-detail-btn" class="btn-secondary">Accountant CSV</button>
+          <button id="tax-print-btn" class="btn-ghost">Print / PDF</button>
         </div>
       </div>
 
       <div class="card section-card">
         <div class="section-head">
-          <h2>Taxable Settled Events</h2>
-          <span id="tax-tier-pill" class="tier-pill free">PREVIEW</span>
+          <h2>Taxable FIFO Events</h2>
+          <span id="tax-tier-pill" class="tier-pill free">PREVIEW (AMOUNTS REDACTED)</span>
         </div>
         <div class="table-wrap">
           <table>
             <thead>
               <tr>
-                <th>Settled Date</th>
+                <th>Date (UTC)</th>
+                <th>Type</th>
                 <th>Market</th>
-                <th>Outcome</th>
                 <th class="num">Cost Basis</th>
-                <th class="num">Entry Fees</th>
+                <th class="num">Proceeds</th>
                 <th class="num">Realized PnL</th>
+                <th class="num">Tx</th>
               </tr>
             </thead>
             <tbody id="tax-tbody"></tbody>
@@ -150,7 +157,7 @@
   </main>
 
   <footer class="footer container">
-    <span>PolyLens Tax Export · Informational crypto ledger only (not formal tax advice)</span>
+    <span>PolyLens Tax Export · Informational FIFO ledger only (not tax advice) · Refunds if Koinly import fails</span>
     <span class="mono small muted">Treasury: 0xcC52...7FF6</span>
   </footer>
 

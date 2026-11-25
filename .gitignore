@@ -8,3 +8,4 @@ bot/data/
 .npm-credentials.txt
 mcp-publish/
 .npmrc
+data/

@@ -3,16 +3,16 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>PolyLens — Polymarket Wallet PnL, Fee Audit & x402 API</title>
-  <meta name="description" content="Instant Polymarket wallet PnL, win rate, hidden entry fees, unclaimed redeemable winnings, live >$5K Whale Tape, shareable Trader Cards, CSV tax export & x402 USDC API." />
+  <title>PolyLens — Free Polymarket Wallet Audit, Whale Tape &amp; 2026 FIFO Tax CSV</title>
+  <meta name="description" content="Free Polymarket wallet PnL, win rate, hidden entry fees, unclaimed redeemable winnings, live >$5K Whale Tape, Trader Cards &amp; 2026 FIFO Koinly Tax CSV." />
   <meta property="og:type" content="website" />
   <meta property="og:url" content="https://polylens-zeta.vercel.app/" />
-  <meta property="og:title" content="PolyLens — Polymarket Wallet PnL, Whale Tape & x402 USDC API" />
-  <meta property="og:description" content="Audit any Polymarket wallet in 2s, track live >$5K whale bets, export 1200x630 Trader Cards, and query x402 USDC APIs on Base & Polygon." />
+  <meta property="og:title" content="PolyLens — Free Polymarket Wallet Audit &amp; 2026 Koinly Tax CSV" />
+  <meta property="og:description" content="Audit any Polymarket wallet in 2s free, track live >$5K whale bets, and export FIFO Koinly Tax CSVs." />
   <meta property="og:image" content="https://polylens-zeta.vercel.app/og-card.png" />
   <meta name="twitter:card" content="summary_large_image" />
-  <meta name="twitter:title" content="PolyLens — Polymarket Wallet PnL, Whale Tape & x402 USDC API" />
-  <meta name="twitter:description" content="Audit any Polymarket wallet in 2s, track live >$5K whale bets, export 1200x630 Trader Cards, and query x402 USDC APIs on Base & Polygon." />
+  <meta name="twitter:title" content="PolyLens — Free Polymarket Wallet Audit &amp; 2026 Koinly Tax CSV" />
+  <meta name="twitter:description" content="Audit any Polymarket wallet in 2s free, track live >$5K whale bets, and export FIFO Koinly Tax CSVs." />
   <meta name="twitter:image" content="https://polylens-zeta.vercel.app/og-card.png" />
   <link rel="stylesheet" href="/style.css" />
 </head>
@@ -24,36 +24,33 @@
       <div class="brand">
         <span class="brand-dot"></span>
         <span class="brand-name">PolyLens</span>
-        <span class="brand-tag">LIVE v2 DATA</span>
+        <span class="brand-tag">FREE AUDIT · FIFO TAX</span>
       </div>
       <nav class="nav-tabs">
         <button class="nav-btn active" data-tab="analyzer">Wallet Audit</button>
-        <button class="nav-btn" data-tab="whale-tape">Whale Tape 🔥</button>
-        <button class="nav-btn" data-tab="hl-funding">HL Funding ⚡</button>
-        <button class="nav-btn" data-tab="movers">Market Movers</button>
-        <a href="/tax-export" class="nav-btn" style="text-decoration:none;">2026 Tax CSV</a>
-        <button class="nav-btn" data-tab="tg-alerts">TG Alerts 🔔</button>
-        <button class="nav-btn" data-tab="agent-api">x402 Agent API</button>
+        <button class="nav-btn" data-tab="whale-tape">Whale Tape</button>
+        <a href="/tax-export" class="nav-btn" style="text-decoration:none; color: var(--accent-2); font-weight:700;">2026 Tax CSV (7 USDC)</a>
+        <button class="nav-btn" data-tab="tg-alerts">TG Alerts</button>
       </nav>
     </div>
   </header>
 
   <main class="container">
-    <!-- TAB 1: WALLET ANALYZER -->
+    <!-- TAB 1: FREE WALLET ANALYZER -->
     <section id="tab-analyzer" class="tab-panel active">
       <div class="hero">
-        <div class="pill">Polygon & Base USDC Native · Zero Sign-Up · Non-Custodial</div>
+        <div class="pill">100% Free Wallet Audit · Zero Sign-Up · Non-Custodial</div>
         <h1>Audit Any <span class="gradient-text">Polymarket</span> Wallet in 2 Seconds</h1>
         <p class="subtitle">
-          Expose real PnL, win rate, entry fees burned, and unclaimed redeemable USDC.
-          Generate a shareable Trader Card free — unlock full history &amp; tax CSV for <strong>3 USDC</strong>.
+          Expose official PnL, win rate, entry fees burned, and unclaimed redeemable USDC.
+          Generate a shareable 1200×630 Trader Card free — or export your <strong>2026 FIFO Koinly Tax CSV</strong>.
         </p>
 
         <form id="search-form" class="search-box">
           <input
             id="wallet-input"
             type="text"
-            placeholder="Paste Polymarket proxy wallet (0x...)"
+            placeholder="Paste Polymarket EOA or proxy wallet (0x...)"
             autocomplete="off"
             spellcheck="false"
           />
@@ -75,10 +72,8 @@
       </div>
 
       <div id="results-area" class="results-area hidden">
-        <!-- Redeemable Alert -->
         <div id="redeemable-alert" class="alert-banner hidden"></div>
 
-        <!-- Trader Scorecard Hero -->
         <div class="scorecard-grid">
           <div class="card archetype-card">
             <div class="archetype-top">
@@ -104,7 +99,7 @@
               <div id="kpi-pnl-split" class="kpi-sub">—</div>
             </div>
             <div class="card kpi">
-              <div class="muted-label">WIN RATE</div>
+              <div class="muted-label">WIN RATE (SAMPLED)</div>
               <div id="kpi-win-rate" class="kpi-value">—</div>
               <div id="kpi-wl" class="kpi-sub">—</div>
             </div>
@@ -121,63 +116,33 @@
           </div>
         </div>
 
-        <!-- Canvas Preview (hidden offscreen for crisp 1200x630 PNG export) -->
         <canvas id="share-canvas" width="1200" height="630" class="hidden"></canvas>
 
-        <!-- Category Edge -->
         <div class="card section-card">
           <div class="section-head">
             <h2>Category Edge Breakdown</h2>
-            <span id="tier-pill" class="tier-pill free">FREE PREVIEW</span>
+            <span class="tier-pill pro">FREE AUDIT</span>
           </div>
           <div id="category-list" class="category-grid"></div>
         </div>
 
-        <!-- PRO UNLOCK PAYWALL / VERIFIED BANNER -->
-        <div id="pro-banner" class="card pro-card">
+        <!-- CLEAN CTA TO THE ONE PAID PRODUCT: 2026 FIFO TAX CSV -->
+        <div class="card pro-card">
           <div class="pro-left">
-            <div class="pro-eyebrow">INSTANT ON-CHAIN UNLOCK · NO ACCOUNT NEEDED</div>
-            <h2>Unlock Full Pro Audit &amp; Tax CSV — <span class="accent">3 USDC</span></h2>
+            <div class="pro-eyebrow">2026 TAX SEASON · TRUE /v2/activity FIFO LEDGER</div>
+            <h2>Need a Koinly-Ready 2026 Polymarket Tax CSV? — <span class="accent">7 USDC</span></h2>
             <ul class="pro-list">
-              <li>All open, redeemable &amp; closed positions (up to 400+ rows, currently <span id="locked-summary">hidden rows locked</span>)</li>
-              <li>Complete category win-rate &amp; fee bleed breakdown</li>
-              <li>Last 50 on-chain trades &amp; activity log with tx hashes</li>
-              <li>1-click <strong>Tax / Trading Journal CSV Export</strong></li>
+              <li>Reconstructs full chronological <code>BUY</code> / <code>SELL</code> / <code>REDEEM</code> / <code>REWARD</code> history (never zero-cost bugs)</li>
+              <li>Preserves every deductible losing disposal with real Polygonscan <code>TxHash</code></li>
+              <li>Official Koinly CSV + Accountant Ledger + Printable PDF (full refund if Koinly import fails)</li>
             </ul>
           </div>
-          <div class="pro-right">
-            <div class="chain-toggle">
-              <button type="button" class="chain-btn active" data-chain="base">Base USDC</button>
-              <button type="button" class="chain-btn" data-chain="polygon">Polygon USDC</button>
-              <button type="button" class="chain-btn" data-chain="polygon_e">Polygon USDC.e</button>
-            </div>
-            <button id="wallet-pay-btn" class="btn-primary full-width">
-              Pay 3 USDC with Wallet (MetaMask / Rabby / OKX)
-            </button>
-            <div class="divider"><span>or send manually &amp; paste tx hash</span></div>
-            <div class="manual-pay">
-              <div class="copy-row">
-                <code id="treasury-addr">0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6</code>
-                <button type="button" id="copy-treasury-btn" class="btn-mini">Copy</button>
-              </div>
-              <div class="verify-row">
-                <input id="tx-hash-input" type="text" placeholder="Paste 0x transaction hash..." spellcheck="false" />
-                <button type="button" id="verify-tx-btn" class="btn-secondary">Verify</button>
-              </div>
-            </div>
-            <div id="pay-status" class="pay-status hidden"></div>
+          <div class="pro-right" style="display:flex; flex-direction:column; justify-content:center; gap:10px;">
+            <a id="cta-tax-link" href="/tax-export" class="btn-primary full-width">Scan This Wallet's 2026 Tax Events (Free Preview) →</a>
+            <span class="muted small" style="text-align:center;">Non-custodial Base or Polygon USDC · No sign-up required</span>
           </div>
         </div>
 
-        <div id="pro-unlocked-bar" class="card unlocked-bar hidden">
-          <div>
-            <strong>Pro Audit Unlocked!</strong>
-            <span id="unlocked-tx-info" class="muted small"></span>
-          </div>
-          <button id="download-csv-btn" class="btn-primary">Download Full CSV</button>
-        </div>
-
-        <!-- Positions Tables -->
         <div class="tables-grid">
           <div class="card section-card">
             <div class="section-head">
@@ -221,28 +186,6 @@
             </div>
           </div>
         </div>
-
-        <!-- Recent Activity (Pro only) -->
-        <div id="activity-section" class="card section-card hidden">
-          <div class="section-head">
-            <h2>Recent On-Chain Activity</h2>
-            <span class="tier-pill pro">PRO UNLOCKED</span>
-          </div>
-          <div class="table-wrap">
-            <table>
-              <thead>
-                <tr>
-                  <th>Time</th>
-                  <th>Type</th>
-                  <th>Market</th>
-                  <th class="num">Price</th>
-                  <th class="num">USDC Size</th>
-                </tr>
-              </thead>
-              <tbody id="activity-tbody"></tbody>
-            </table>
-          </div>
-        </div>
       </div>
     </section>
 
@@ -252,7 +195,7 @@
         <div class="section-head">
           <div>
             <h2>Live Polymarket Whale Tape (&gt;$5,000 Bets)</h2>
-            <p class="muted small">Real-time high-conviction Polymarket trades. Click <strong>Audit Whale →</strong> on any bet to inspect that trader's lifetime PnL &amp; win rate.</p>
+            <p class="muted small">Real-time high-conviction Polymarket trades. Click <strong>Audit Whale →</strong> on any bet to inspect that trader's PnL &amp; win rate.</p>
           </div>
           <div class="tape-controls">
             <div class="pill-group" id="tape-min-group">
@@ -288,149 +231,37 @@
       </div>
     </section>
 
-    <!-- TAB 3: HYPERLIQUID FUNDING RADAR -->
-    <section id="tab-hl-funding" class="tab-panel">
-      <div class="card section-card">
-        <div class="section-head">
-          <div>
-            <h2>Hyperliquid Extreme Funding-Rate Arbitrage Radar</h2>
-            <p class="muted small">Live perpetual markets (&gt;$500K 24h volume) sorted by extreme annualized funding APR. Top-50 feed available via x402 (<code>0.05 USDC</code>).</p>
-          </div>
-          <button id="refresh-hl-btn" class="btn-secondary">Refresh</button>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>Symbol</th>
-                <th>Direction</th>
-                <th>Arb Hint</th>
-                <th class="num">Mark Px</th>
-                <th class="num">24h Vol</th>
-                <th class="num">Open Interest</th>
-                <th class="num">Annualized APR</th>
-              </tr>
-            </thead>
-            <tbody id="hl-funding-tbody">
-              <tr><td colspan="7" class="muted">Loading live Hyperliquid funding rates...</td></tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      <div class="card section-card">
-        <div class="section-head">
-          <div>
-            <h2>Hyperliquid Perp Wallet Equity Preview</h2>
-            <p class="muted small">Free equity, margin &amp; fill PnL preview. Full open positions JSON available via <code>/api/v1/hyperliquid/wallet</code> (0.05 USDC).</p>
-          </div>
-        </div>
-        <form id="hl-wallet-form" class="search-box" style="margin-bottom:12px;">
-          <input id="hl-wallet-input" type="text" placeholder="Paste Hyperliquid EVM wallet (0x...)" spellcheck="false" />
-          <button type="submit" id="hl-wallet-btn" class="btn-primary">Check Perp Equity</button>
-        </form>
-        <div id="hl-wallet-result" class="muted small">Enter any Hyperliquid 0x address to preview account value and margin usage.</div>
-      </div>
-    </section>
-
-    <!-- TAB 4: MARKET MOVERS -->
-    <section id="tab-movers" class="tab-panel">
-      <div class="card section-card">
-        <div class="section-head">
-          <div>
-            <h2>Live Polymarket 24h Volume &amp; Spread Movers</h2>
-            <p class="muted small">Free top-3 preview below. AI agents &amp; bots can unlock the full top-30 live feed for 0.05 USDC via x402.</p>
-          </div>
-          <button id="refresh-movers-btn" class="btn-secondary">Refresh</button>
-        </div>
-        <div id="movers-list" class="movers-grid">
-          <p class="muted">Loading live Polymarket markets...</p>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 4: TELEGRAM ALERTS -->
+    <!-- TAB 3: TELEGRAM ALERTS (FREE) -->
     <section id="tab-tg-alerts" class="tab-panel">
       <div class="card section-card">
         <div class="section-head">
           <div>
             <h2>Telegram Whale &amp; Odds Alert Bot (<a href="https://t.me/polylens_alerts_bot" target="_blank" style="color:var(--accent-2); text-decoration:none;">@polylens_alerts_bot</a>)</h2>
-            <p class="muted small">Real-time alerts when tracked Polymarket whales place new trades or market odds swing &ge;5%. Free tier (1 wallet + 1 market) or <strong>7 USDC / 30 days</strong> for 20+20 slots.</p>
+            <p class="muted small">Real-time Polymarket wallet &amp; odds alerts directly in Telegram (now with automatic EOA → Proxy Wallet resolution). Free up to 5 watched wallets + 5 markets.</p>
           </div>
           <div style="display:flex; gap:8px; flex-wrap:wrap;">
             <a href="https://t.me/polylens_alerts_bot" target="_blank" class="btn-primary">Open @polylens_alerts_bot →</a>
-            <a href="https://github.com/xujie19975555-eng/polylens/tree/main/bot" target="_blank" class="btn-secondary">View Bot Source</a>
+            <a href="https://github.com/xujie19975555-eng/polylens" target="_blank" class="btn-secondary">GitHub &amp; MCP</a>
           </div>
         </div>
 
         <div class="api-grid">
           <div class="api-box">
-            <div class="muted-label">BOT COMMANDS</div>
+            <div class="muted-label">TELEGRAM COMMANDS (ALL FREE)</div>
             <ul class="endpoint-list">
               <li><code>/audit &lt;0xWallet&gt;</code> <span class="badge-free">FREE</span></li>
               <li><code>/whale [minUsd]</code> <span class="badge-free">FREE</span></li>
-              <li><code>/watch &lt;0xWallet&gt; [label]</code> <span class="badge-free">1 FREE / 20 PRO</span></li>
-              <li><code>/watchmarket &lt;slug&gt; [pct]</code> <span class="badge-free">1 FREE / 20 PRO</span></li>
-              <li><code>/upgrade &lt;0xTxHash&gt;</code> <span class="badge-paid">7 USDC / 30D</span></li>
+              <li><code>/watch &lt;0xWallet&gt; [label]</code> <span class="badge-free">UP TO 5 FREE</span></li>
+              <li><code>/watchmarket &lt;slug&gt; [pct]</code> <span class="badge-free">UP TO 5 FREE</span></li>
+              <li><code>/list</code> &amp; <code>/unwatch</code> <span class="badge-free">FREE</span></li>
             </ul>
           </div>
           <div class="api-box">
-            <div class="muted-label">ON-CHAIN SUBSCRIPTION &amp; SELF-HOST</div>
+            <div class="muted-label">FREE MCP SERVER FOR CLAUDE &amp; CURSOR</div>
             <p class="muted small" style="margin-top:8px;">
-              Send <strong>7 USDC</strong> on Base or Polygon to <code>0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6</code>, then message <code>/upgrade 0xTxHash</code> to unlock 20 whale wallets + 20 markets with anti-replay verification.
+              Query live Polymarket wallet PnL, Whale Tape, and 2026 FIFO Tax Previews directly inside your AI IDE:
             </p>
-            <pre class="code-block"><code>git clone https://github.com/xujie19975555-eng/polylens
-cd polylens
-TELEGRAM_BOT_TOKEN=your_botfather_token npm run bot</code></pre>
-          </div>
-        </div>
-      </div>
-    </section>
-
-    <!-- TAB 5: x402 AGENT API -->
-    <section id="tab-agent-api" class="tab-panel">
-      <div class="card section-card">
-        <div class="section-head">
-          <div>
-            <h2>x402 Machine-to-Machine USDC Micropayment API</h2>
-            <p class="muted small">Zero API keys. Zero accounts. Any autonomous AI agent pays <strong>0.05 USDC</strong> on Base or Polygon and receives structured JSON instantly.</p>
-          </div>
-          <a href="/.well-known/x402.json" target="_blank" class="btn-secondary">View x402.json</a>
-        </div>
-
-        <div class="api-grid">
-          <div class="api-box">
-            <div class="muted-label">TREASURY (BASE &amp; POLYGON USDC)</div>
-            <code class="mono-block">0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6</code>
-            <div class="muted-label" style="margin-top:16px;">ENDPOINTS</div>
-            <ul class="endpoint-list">
-              <li><code>GET /api/wallet?address=0x...</code> <span class="badge-free">FREE</span></li>
-              <li><code>GET /api/whale-tape?minUsd=5000</code> <span class="badge-free">FREE</span></li>
-              <li><code>GET /api/tax-preview?address=0x...</code> <span class="badge-free">FREE</span></li>
-              <li><code>GET /api/hyperliquid/funding</code> <span class="badge-free">FREE</span></li>
-              <li><code>GET /api/v1/wallet/deep?address=0x...</code> <span class="badge-paid">0.05 USDC</span></li>
-              <li><code>GET /api/v1/markets/movers</code> <span class="badge-paid">0.05 USDC</span></li>
-              <li><code>GET /api/v1/whale-tape?minUsd=5000</code> <span class="badge-paid">0.05 USDC</span></li>
-              <li><code>GET /api/v1/hyperliquid/funding</code> <span class="badge-paid">0.05 USDC</span></li>
-              <li><code>GET /api/v1/hyperliquid/wallet?address=0x...</code> <span class="badge-paid">0.05 USDC</span></li>
-              <li><code>GET /api/pro-report?address=0x...</code> <span class="badge-paid">3.00 USDC</span></li>
-              <li><code>GET /api/tax-export?address=0x...</code> <span class="badge-paid">7.00 USDC</span></li>
-            </ul>
-            <div class="muted-label" style="margin-top:16px;">ZERO-CONFIG MCP SERVER</div>
             <pre class="code-block"><code>npx -y polylens-mcp</code></pre>
-          </div>
-          <div class="api-box">
-            <div class="muted-label">AGENT QUICKSTART (HTTP 402 FLOW)</div>
-            <pre class="code-block"><code># 1. Request returns HTTP 402 + exact USDC quote
-curl -i "https://YOUR_DOMAIN/api/v1/wallet/deep?address=0x2c33..."
-
-# 2. Agent sends 0.05 USDC on Base (chainId 8453)
-#    to 0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6
-
-# 3. Retry with on-chain tx hash header -> HTTP 200 JSON + CSV
-curl -H "X-Payment-Tx: 0xYOUR_TX_HASH" \
-     -H "X-Payment-Chain: base" \
-     "https://YOUR_DOMAIN/api/v1/wallet/deep?address=0x2c33..."</code></pre>
           </div>
         </div>
       </div>
@@ -438,7 +269,7 @@ curl -H "X-Payment-Tx: 0xYOUR_TX_HASH" \
   </main>
 
   <footer class="footer container">
-    <span>PolyLens · Read-only Polymarket v2 analytics · Non-custodial Base &amp; Polygon USDC settlement</span>
+    <span>PolyLens · Free Polymarket v2 analytics &amp; 2026 FIFO Tax CSV · Non-custodial Base &amp; Polygon USDC</span>
     <span class="mono small muted">Treasury: 0xcC52...7FF6</span>
   </footer>
 

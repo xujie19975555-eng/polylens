@@ -18,7 +18,7 @@ test("tax-export returns HTTP 402 quoting 7 USDC when unpaid", async () => {
   assert.equal(body.accepts[0].maxAmountRequired, "7000000");
 });
 
-test("hyperliquid x402 endpoints return HTTP 402 quoting 0.05 USDC when unpaid", async () => {
+test("retired hyperliquid paid endpoints return HTTP 410", async () => {
   for (const path of ["/api/v1/hyperliquid/funding", "/api/v1/hyperliquid/wallet?address=0x2c335066fe58fe9237c3d3dc7b275c2a034a0563"]) {
     const [pathname, qs] = path.split("?");
     const resp = await handleApiRequest({
@@ -27,10 +27,7 @@ test("hyperliquid x402 endpoints return HTTP 402 quoting 0.05 USDC when unpaid",
       method: "GET",
       headers: {},
     });
-    assert.equal(resp.status, 402);
-    const body = JSON.parse(resp.body);
-    assert.equal(body.priceUsdc, PRICING.x402CallUsdc);
-    assert.equal(body.payTo, TREASURY_ADDRESS);
+    assert.equal(resp.status, 410);
   }
 });
 
