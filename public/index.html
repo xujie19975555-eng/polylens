@@ -30,6 +30,7 @@
         <button class="nav-btn active" data-tab="analyzer">Wallet Audit</button>
         <button class="nav-btn" data-tab="whale-tape">Whale Tape 🔥</button>
         <button class="nav-btn" data-tab="movers">Market Movers</button>
+        <button class="nav-btn" data-tab="tg-alerts">TG Alerts 🔔</button>
         <button class="nav-btn" data-tab="agent-api">x402 Agent API</button>
       </nav>
     </div>
@@ -301,7 +302,42 @@
       </div>
     </section>
 
-    <!-- TAB 3: x402 AGENT API -->
+    <!-- TAB 4: TELEGRAM ALERTS -->
+    <section id="tab-tg-alerts" class="tab-panel">
+      <div class="card section-card">
+        <div class="section-head">
+          <div>
+            <h2>Telegram Whale &amp; Odds Alert Bot</h2>
+            <p class="muted small">Real-time alerts when tracked Polymarket whales place new trades or market odds swing &ge;5%. Free tier (1 wallet + 1 market) or <strong>7 USDC / 30 days</strong> for 20+20 slots.</p>
+          </div>
+          <a href="https://github.com/xujie19975555-eng/polylens/tree/main/bot" target="_blank" class="btn-secondary">View Bot Source</a>
+        </div>
+
+        <div class="api-grid">
+          <div class="api-box">
+            <div class="muted-label">BOT COMMANDS</div>
+            <ul class="endpoint-list">
+              <li><code>/audit &lt;0xWallet&gt;</code> <span class="badge-free">FREE</span></li>
+              <li><code>/whale [minUsd]</code> <span class="badge-free">FREE</span></li>
+              <li><code>/watch &lt;0xWallet&gt; [label]</code> <span class="badge-free">1 FREE / 20 PRO</span></li>
+              <li><code>/watchmarket &lt;slug&gt; [pct]</code> <span class="badge-free">1 FREE / 20 PRO</span></li>
+              <li><code>/upgrade &lt;0xTxHash&gt;</code> <span class="badge-paid">7 USDC / 30D</span></li>
+            </ul>
+          </div>
+          <div class="api-box">
+            <div class="muted-label">ON-CHAIN SUBSCRIPTION &amp; SELF-HOST</div>
+            <p class="muted small" style="margin-top:8px;">
+              Send <strong>7 USDC</strong> on Base or Polygon to <code>0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6</code>, then message <code>/upgrade 0xTxHash</code> to unlock 20 whale wallets + 20 markets with anti-replay verification.
+            </p>
+            <pre class="code-block"><code>git clone https://github.com/xujie19975555-eng/polylens
+cd polylens
+TELEGRAM_BOT_TOKEN=your_botfather_token npm run bot</code></pre>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 5: x402 AGENT API -->
     <section id="tab-agent-api" class="tab-panel">
       <div class="card section-card">
         <div class="section-head">

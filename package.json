@@ -1,11 +1,12 @@
 {
   "name": "polylens",
-  "version": "1.0.0",
-  "description": "Polymarket Wallet PnL, Fee & Win-Rate Intelligence + x402 USDC Micropayment API",
+  "version": "1.2.0",
+  "description": "Polymarket Wallet PnL, Whale Tape, TG Alerts & x402 USDC Micropayment API",
   "type": "module",
   "scripts": {
     "dev": "node server.mjs",
     "start": "node server.mjs",
+    "bot": "node bot/telegram-bot.mjs",
     "test": "node --test tests/*.test.mjs"
   },
   "engines": {
