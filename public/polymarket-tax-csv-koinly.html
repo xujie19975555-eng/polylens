@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>How to Export a Polymarket Tax CSV for Koinly (2026 FIFO Guide) — PolyLens</title>
+  <meta name="description" content="Step-by-step guide to importing Polymarket trades, redemptions, and losses into Koinly using chronological FIFO cost basis from /v2/activity." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://polylens-zeta.vercel.app/polymarket-tax-csv-koinly" />
+  <meta property="og:title" content="How to Export a Polymarket Tax CSV for Koinly (2026 FIFO Guide)" />
+  <meta property="og:description" content="Avoid inflated zero-cost-basis gains on Polymarket. Learn how to generate a Koinly-ready FIFO CSV preserving losing redemptions and real tx hashes." />
+  <meta property="og:image" content="https://polylens-zeta.vercel.app/og-card.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://polylens-zeta.vercel.app/og-card.png" />
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .guide-wrap { max-width: 820px; margin: 0 auto; }
+    .guide-card { padding: 26px; margin-bottom: 18px; line-height: 1.7; }
+    .guide-card h2 { font-size: 1.25rem; margin: 0 0 12px; color: var(--text); }
+    .guide-card p { margin: 0 0 12px; color: var(--muted); }
+    .guide-card ul, .guide-card ol { margin: 0 0 12px; padding-left: 20px; color: var(--muted); }
+    .guide-card li { margin-bottom: 6px; }
+    .code-sample {
+      background: var(--surface-2);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 16px;
+      overflow-x: auto;
+      font-family: ui-monospace, SFMono-Regular, Menlo, monospace;
+      font-size: 0.84rem;
+      color: var(--accent-2);
+      margin: 12px 0;
+    }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="/" class="brand" style="text-decoration:none; color:inherit;">
+        <span class="brand-dot"></span>
+        <span class="brand-name">PolyLens</span>
+        <span class="brand-tag">KOINLY GUIDE</span>
+      </a>
+      <nav class="nav-tabs">
+        <a href="/" class="nav-btn" style="text-decoration:none;">Wallet Audit</a>
+        <a href="/tax-export" class="nav-btn active" style="text-decoration:none;">2026 Tax CSV (7 USDC)</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" style="padding: 28px 0 56px;">
+    <div class="guide-wrap">
+      <div class="hero" style="text-align:left; margin-bottom: 24px;">
+        <div class="pill">Polymarket Tax Reporting · FIFO Cost Basis · Koinly Custom CSV</div>
+        <h1>How to Import <span class="gradient-text">Polymarket</span> History into Koinly Without Zero-Cost Bugs</h1>
+        <p class="subtitle" style="margin: 10px 0 0; max-width: 100%;">
+          Polymarket settles on Polygon via Conditional Token Framework (CTF) contracts. Standard Polygon wallet syncs in tax tools often treat redemptions as uncosted USDC deposits, overstating gains and dropping losing positions.
+        </p>
+        <div class="cta-row">
+          <a href="/tax-export" class="btn-primary" style="text-decoration:none;">Generate 2026 Koinly CSV (Free Preview)</a>
+          <a href="/" class="nav-btn" style="text-decoration:none;">Run Free Wallet Audit →</a>
+        </div>
+      </div>
+
+      <section class="card guide-card">
+        <h2>1. Why Closed-Position &amp; Raw Wallet Syncs Break Polymarket Taxes</h2>
+        <ul>
+          <li><strong>Missing purchase timestamps:</strong> Summary endpoints like <code>/closed-positions</code> omit entry dates, breaking short-term vs. long-term holding rules.</li>
+          <li><strong>Zero-cost-basis redemptions:</strong> On-chain CTF <code>REDEEM</code> payouts look like unexplained incoming USDC if the original <code>BUY</code>, <code>SPLIT</code>, or <code>MERGE</code> lots are not matched chronologically.</li>
+          <li><strong>Dropped losing markets:</strong> Expired losing YES/NO shares often produce $0 on-chain transfers, causing naive CSVs to omit real capital losses that should offset winning trades.</li>
+        </ul>
+      </section>
+
+      <section class="card guide-card">
+        <h2>2. How PolyLens Reconstructs Chronological FIFO Lots</h2>
+        <p>
+          PolyLens queries Polymarket's chronological <code>/v2/activity</code> ledger per wallet and simulates FIFO lot queues for every market outcome token:
+        </p>
+        <ul>
+          <li><strong>Buys &amp; Splits:</strong> Open FIFO cost-basis lots in USDC at exact UTC execution timestamps.</li>
+          <li><strong>Sells &amp; Merges:</strong> Dequeue FIFO lots in order and compute realized profit or loss net of matched basis.</li>
+          <li><strong>Winning &amp; Losing Redemptions:</strong> Settle remaining open shares against resolution payouts—explicitly recording negative realized losses when a market resolves against your shares.</li>
+          <li><strong>Rewards &amp; Rebates:</strong> Tagged separately as <code>reward</code> events with real transaction hashes.</li>
+        </ul>
+      </section>
+
+      <section class="card guide-card">
+        <h2>3. Official Koinly Custom CSV Format</h2>
+        <p>
+          PolyLens exports Koinly's exact Simple Custom CSV columns, using UTC timestamps (<code>YYYY-MM-DD HH:mm:ss</code>), signed USDC amounts (negative for losses), and exact Koinly labels (<code>realized gain</code> and <code>reward</code>):
+        </p>
+        <div class="code-sample">Koinly Date,Amount,Currency,Label,Description,TxHash
+2026-11-25 19:16:10,-99317.05,USDC,realized gain,"REDEEM: Will Arsenal FC win on 2026-11-21? (Yes)",0x80ab...d7d93
+2026-11-25 19:03:15,16300.20,USDC,realized gain,"TRADE: Will FC Barcelona win on 2026-11-25? (Yes)",0x0b41...f3f3</div>
+        <p>
+          You also receive a full <strong>Accountant Detailed Ledger CSV</strong> showing per-event Proceeds, Cost Basis, Realized PnL, and Market Slug for your CPA or spreadsheet audit.
+        </p>
+      </section>
+
+      <section class="card guide-card">
+        <h2>4. Step-by-Step: Importing into Koinly</h2>
+        <ol>
+          <li>Open <a href="/tax-export" style="color:var(--accent-2);">PolyLens 2026 Tax CSV Export</a>, paste your Polymarket EOA or proxy wallet, and click <strong>Scan Tax Events</strong> (free preview shows event count, win/loss/reward split, and sample tx hash).</li>
+          <li>Unlock full export for <strong>7 USDC</strong> via Base or Polygon USDC (non-custodial transfer, replay-protected verification).</li>
+          <li>Download the <strong>Koinly CSV</strong> file.</li>
+          <li>In Koinly, go to <strong>Wallets → Add wallet → Custom Wallet</strong> (for example, name it <em>Polymarket FIFO</em>).</li>
+          <li>Choose <strong>Import from file</strong>, upload the PolyLens Koinly CSV, and verify zero skipped rows and properly recognized realized gains &amp; losses.</li>
+        </ol>
+        <div class="cta-row">
+          <a href="/tax-export" class="btn-primary" style="text-decoration:none;">Scan Your Wallet Free →</a>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

@@ -9,3 +9,4 @@ bot/data/
 mcp-publish/
 .npmrc
 data/
+.koinly-credentials.txt

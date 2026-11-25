@@ -12,6 +12,8 @@ const STATIC_FILES = {
   "/tax-export": { file: "tax-export.html", type: "text/html; charset=utf-8" },
   "/tax-export.html": { file: "tax-export.html", type: "text/html; charset=utf-8" },
   "/tax-export.js": { file: "tax-export.js", type: "application/javascript; charset=utf-8" },
+  "/polymarket-tax-csv-koinly": { file: "polymarket-tax-csv-koinly.html", type: "text/html; charset=utf-8" },
+  "/polymarket-tax-csv-koinly.html": { file: "polymarket-tax-csv-koinly.html", type: "text/html; charset=utf-8" },
   "/style.css": { file: "style.css", type: "text/css; charset=utf-8" },
   "/client.js": { file: "client.js", type: "application/javascript; charset=utf-8" },
   "/og-card.png": { file: "og-card.png", type: "image/png" },
