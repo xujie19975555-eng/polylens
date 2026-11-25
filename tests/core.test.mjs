@@ -98,7 +98,8 @@ test("x402 discovery manifest exposes treasury and endpoints", async () => {
   assert.equal(resp.status, 200);
   const data = JSON.parse(resp.body);
   assert.equal(data.treasury, TREASURY_ADDRESS);
-  assert.ok(data.endpoints.length >= 4);
+  assert.ok(data.endpoints.some((e) => e.path.includes("/api/v1/whale-tape")));
+  assert.ok(data.endpoints.length >= 6);
   const payPayload = buildPaymentRequiredResponse({
     resource: "/api/pro-report",
     description: "test",
@@ -106,4 +107,18 @@ test("x402 discovery manifest exposes treasury and endpoints", async () => {
     priceAtomic: 3_000_000n,
   });
   assert.equal(payPayload.payTo, TREASURY_ADDRESS);
+});
+
+test("returns HTTP 402 for unpaid /api/v1/whale-tape", async () => {
+  const resp = await handleApiRequest({
+    pathname: "/api/v1/whale-tape",
+    searchParams: new URLSearchParams("minUsd=5000"),
+    method: "GET",
+    headers: {},
+  });
+  assert.equal(resp.status, 402);
+  const body = JSON.parse(resp.body);
+  assert.equal(body.payTo, TREASURY_ADDRESS);
+  assert.equal(body.priceUsdc, PRICING.x402CallUsdc);
+  assert.equal(body.resource, "/api/v1/whale-tape");
 });

@@ -1,0 +1,22 @@
+# PolyLens — Polymarket Wallet PnL Audit & x402 USDC API
+
+> Live App: https://polylens-zeta.vercel.app
+> x402 Discovery: https://polylens-zeta.vercel.app/.well-known/x402.json
+> Treasury (Base & Polygon USDC): 0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6
+
+PolyLens provides real-time, non-custodial Polymarket wallet intelligence and machine-to-machine HTTP 402 (x402) data feeds settled natively in USDC on Base (chainId 8453) and Polygon (chainId 137).
+
+## Free Endpoints
+- `GET /api/wallet?address=0x...` — Lifetime PnL, rank, win rate, entry fees burned, redeemable balance, category preview, top positions.
+- `GET /api/leaderboard?limit=6` — Top Polymarket leaderboard traders.
+- `GET /api/whale-tape?minUsd=5000&sort=recent` — Top-15 live Polymarket trades above `minUsd` (`5000`, `25000`, `50000`).
+- `GET /api/v1/markets/movers?preview=1` — Top-3 active 24h volume & spread markets.
+- `GET /api/v1/whale-tape?preview=1` — Top-5 live whale bets preview.
+
+## Paid x402 Endpoints (No API Key Required)
+Send USDC on Base (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) or Polygon (`0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359` / `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174`) to `0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6`, then pass `X-Payment-Tx: 0x...` (and optional `X-Payment-Chain: base|polygon`).
+
+- `GET /api/v1/wallet/deep?address=0x...` — **0.05 USDC/call** — Full up to 400+ positions, category edge, 50 recent trades & CSV.
+- `GET /api/v1/markets/movers` — **0.05 USDC/call** — Top-30 live Polymarket 24h volume, spread & 1d odds movers feed.
+- `GET /api/v1/whale-tape?minUsd=5000&sort=recent` — **0.05 USDC/call** — Top-100 live Polymarket whale trades with tx hashes & category tags.
+- `GET /api/pro-report?address=0x...` — **3.00 USDC** — Web Pro Audit + activity log + downloadable CSV.

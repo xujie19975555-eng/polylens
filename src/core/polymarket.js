@@ -417,3 +417,45 @@ export async function fetchMarketMovers(limit = 20) {
     };
   });
 }
+
+export async function fetchWhaleTape({ minUsd = 5000, limit = 30, sort = "recent" } = {}) {
+  const safeMin = Math.max(100, Math.min(1_000_000, Number(minUsd) || 5000));
+  const res = await fetchJson(
+    `${DATA_API}/trades?limit=100&filterType=CASH&filterAmount=${Math.floor(safeMin)}`
+  );
+  const rows = Array.isArray(res?.data) ? res.data : [];
+  const normalized = rows.map((t) => {
+    const size = Number(t.size || 0);
+    const price = Number(t.price || 0);
+    const usdValue = size * price;
+    const rawName = t.name || t.pseudonym || "";
+    const wallet = String(t.proxy_wallet || "").toLowerCase();
+    return {
+      usdValue,
+      side: t.side || "BUY",
+      outcome: t.outcome || "",
+      price,
+      size,
+      timestamp: Number(t.timestamp || 0),
+      title: t.title || "Unknown Market",
+      eventSlug: t.event_slug || t.slug || "",
+      url: t.event_slug ? `https://polymarket.com/event/${t.event_slug}` : "https://polymarket.com",
+      wallet,
+      traderName:
+        rawName && !rawName.toLowerCase().startsWith("0x")
+          ? rawName
+          : wallet
+          ? `${wallet.slice(0, 6)}...${wallet.slice(-4)}`
+          : "Unknown",
+      category: inferCategory(t.title, t.slug),
+      txHash: t.transaction_hash || "",
+    };
+  });
+
+  if (sort === "size") {
+    normalized.sort((a, b) => b.usdValue - a.usdValue);
+  } else {
+    normalized.sort((a, b) => b.timestamp - a.timestamp);
+  }
+  return normalized.slice(0, limit);
+}

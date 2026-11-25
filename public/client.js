@@ -36,6 +36,8 @@ const PAYMENT_OPTIONS = {
 
 let currentReport = null;
 let selectedPayOption = "base";
+let tapeMinUsd = 5000;
+let tapeSort = "recent";
 
 const $ = (id) => document.getElementById(id);
 
@@ -61,15 +63,20 @@ function escapeHtml(s) {
     .replaceAll('"', "&quot;");
 }
 
+function switchTab(tabName) {
+  document.querySelectorAll(".nav-btn").forEach((b) => {
+    b.classList.toggle("active", b.dataset.tab === tabName);
+  });
+  document.querySelectorAll(".tab-panel").forEach((p) => {
+    p.classList.toggle("active", p.id === `tab-${tabName}`);
+  });
+  if (tabName === "whale-tape") loadWhaleTape();
+  if (tabName === "movers") loadMovers();
+}
+
 // Navigation tabs
 document.querySelectorAll(".nav-btn").forEach((btn) => {
-  btn.addEventListener("click", () => {
-    document.querySelectorAll(".nav-btn").forEach((b) => b.classList.remove("active"));
-    document.querySelectorAll(".tab-panel").forEach((p) => p.classList.remove("active"));
-    btn.classList.add("active");
-    $(`tab-${btn.dataset.tab}`).classList.add("active");
-    if (btn.dataset.tab === "movers") loadMovers();
-  });
+  btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
 
 // Chain selector
@@ -526,6 +533,75 @@ async function loadMovers() {
 }
 
 $("refresh-movers-btn").addEventListener("click", loadMovers);
+
+function fmtRelativeTime(ts) {
+  if (!ts) return "-";
+  const diff = Math.max(0, Math.floor(Date.now() / 1000) - ts);
+  if (diff < 60) return `${diff}s ago`;
+  if (diff < 3600) return `${Math.floor(diff / 60)}m ago`;
+  if (diff < 86400) return `${Math.floor(diff / 3600)}h ago`;
+  return `${Math.floor(diff / 86400)}d ago`;
+}
+
+async function loadWhaleTape() {
+  const tbody = $("whale-tape-tbody");
+  tbody.innerHTML = `<tr><td colspan="7" class="muted">Scanning live &gt;$${tapeMinUsd.toLocaleString()} Polymarket trades...</td></tr>`;
+  try {
+    const res = await fetch(`/api/whale-tape?minUsd=${tapeMinUsd}&sort=${tapeSort}`);
+    const data = await res.json();
+    const trades = data.trades || [];
+    if (!trades.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="muted">No recent trades above $${tapeMinUsd.toLocaleString()} found.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = trades
+      .map(
+        (t) => `
+      <tr>
+        <td class="mono small muted">${fmtRelativeTime(t.timestamp)}</td>
+        <td class="mono small">${escapeHtml(t.traderName.slice(0, 18))}</td>
+        <td><span class="side-pill ${t.side === "SELL" ? "sell" : "buy"}">${escapeHtml(t.side)} ${escapeHtml(t.outcome)}</span></td>
+        <td><a class="market-link" target="_blank" href="${escapeHtml(t.url)}">${escapeHtml(t.title)}</a></td>
+        <td class="num">${(t.price * 100).toFixed(1)}¢</td>
+        <td class="num pos"><strong>${fmtUsd(t.usdValue)}</strong></td>
+        <td class="num"><button type="button" class="btn-mini audit-whale-btn" data-wallet="${escapeHtml(t.wallet)}">Audit Whale →</button></td>
+      </tr>`
+      )
+      .join("");
+
+    tbody.querySelectorAll(".audit-whale-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const w = btn.dataset.wallet;
+        if (!w) return;
+        $("wallet-input").value = w;
+        switchTab("analyzer");
+        runWalletAudit(w);
+      });
+    });
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="neg">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+document.querySelectorAll(".tape-filter-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tape-filter-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    tapeMinUsd = Number(btn.dataset.min || 5000);
+    loadWhaleTape();
+  });
+});
+
+document.querySelectorAll(".tape-sort-btn").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    document.querySelectorAll(".tape-sort-btn").forEach((b) => b.classList.remove("active"));
+    btn.classList.add("active");
+    tapeSort = btn.dataset.sort === "size" ? "size" : "recent";
+    loadWhaleTape();
+  });
+});
+
+$("refresh-tape-btn").addEventListener("click", loadWhaleTape);
 
 // Search submit
 $("search-form").addEventListener("submit", (e) => {

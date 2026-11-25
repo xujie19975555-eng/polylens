@@ -4,6 +4,7 @@ import {
   analyzeWallet,
   fetchLeaderboard,
   fetchMarketMovers,
+  fetchWhaleTape,
   isValidEvmAddress,
 } from "./polymarket.js";
 
@@ -36,7 +37,7 @@ export async function handleApiRequest({ pathname, searchParams, method, headers
       return jsonResp(200, {
         service: "PolyLens Intelligence & x402 API",
         status: "ok",
-        version: "1.0.0",
+        version: "1.2.0",
         treasury: TREASURY_ADDRESS,
         chains: {
           base: { chainId: CHAINS.base.chainId, usdc: CHAINS.base.defaultToken },
@@ -51,6 +52,11 @@ export async function handleApiRequest({ pathname, searchParams, method, headers
             path: "/api/wallet?address=0x...",
             priceUsdc: 0,
             description: "Free Polymarket wallet PnL, win-rate, fees & trader scorecard",
+          },
+          {
+            path: "/api/whale-tape?minUsd=5000&sort=recent",
+            priceUsdc: 0,
+            description: "Free top-15 live Polymarket whale trades above minUsd",
           },
           {
             path: "/api/pro-report?address=0x...&tx=0x...",
@@ -68,6 +74,12 @@ export async function handleApiRequest({ pathname, searchParams, method, headers
             priceUsdc: PRICING.x402CallUsdc,
             protocol: "x402-evm-usdc-v1",
             description: "Top 30 active Polymarket 24h volume, spread & 1d odds movers feed (?preview=1 for free 3-market sample)",
+          },
+          {
+            path: "/api/v1/whale-tape?minUsd=5000&sort=recent",
+            priceUsdc: PRICING.x402CallUsdc,
+            protocol: "x402-evm-usdc-v1",
+            description: "Top-100 live Polymarket >$5K whale trades feed with tx hashes & categories (?preview=1 for top-5 sample)",
           },
         ],
       });
@@ -197,6 +209,80 @@ export async function handleApiRequest({ pathname, searchParams, method, headers
         generatedAt: new Date().toISOString(),
         count: markets.length,
         markets,
+      });
+    }
+
+    if (pathname === "/api/whale-tape") {
+      const minUsd = Number(searchParams.get("minUsd") || 5000);
+      const sort = searchParams.get("sort") === "size" ? "size" : "recent";
+      const trades = await fetchWhaleTape({ minUsd, limit: 15, sort });
+      return jsonResp(
+        200,
+        {
+          minUsd,
+          sort,
+          generatedAt: new Date().toISOString(),
+          trades,
+        },
+        { "Cache-Control": "public, max-age=15" }
+      );
+    }
+
+    if (pathname === "/api/v1/whale-tape") {
+      const minUsd = Number(searchParams.get("minUsd") || 5000);
+      const sort = searchParams.get("sort") === "size" ? "size" : "recent";
+      const preview = searchParams.get("preview") === "1";
+      if (preview) {
+        const trades = await fetchWhaleTape({ minUsd, limit: 5, sort });
+        return jsonResp(200, {
+          tier: "preview",
+          note: "Free 5-trade preview. Pay 0.05 USDC on Base/Polygon with X-Payment-Tx header for full top-100 feed.",
+          payTo: TREASURY_ADDRESS,
+          trades,
+        });
+      }
+
+      const txHash = searchParams.get("tx") || getHeader("x-payment-tx") || "";
+      const chain = searchParams.get("chain") || getHeader("x-payment-chain") || "auto";
+      if (!txHash) {
+        return jsonResp(
+          402,
+          buildPaymentRequiredResponse({
+            resource: "/api/v1/whale-tape",
+            description: "Live top-100 Polymarket >$5K whale trades feed with tx hashes & category tags",
+            priceUsdc: PRICING.x402CallUsdc,
+            priceAtomic: PRICING.x402CallAtomic,
+          })
+        );
+      }
+
+      const verification = await verifyUsdcPayment({
+        txHash,
+        chain,
+        minAmountAtomic: PRICING.x402CallAtomic,
+        maxAgeSeconds: 24 * 3600,
+      });
+      if (!verification.ok) {
+        return jsonResp(402, {
+          ...buildPaymentRequiredResponse({
+            resource: "/api/v1/whale-tape",
+            description: "Payment verification failed.",
+            priceUsdc: PRICING.x402CallUsdc,
+            priceAtomic: PRICING.x402CallAtomic,
+          }),
+          verification,
+        });
+      }
+
+      const trades = await fetchWhaleTape({ minUsd, limit: 100, sort });
+      return jsonResp(200, {
+        tier: "x402_paid",
+        paymentVerified: verification,
+        generatedAt: new Date().toISOString(),
+        minUsd,
+        sort,
+        count: trades.length,
+        trades,
       });
     }
 

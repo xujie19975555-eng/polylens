@@ -4,7 +4,16 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>PolyLens — Polymarket Wallet PnL, Fee Audit & x402 API</title>
-  <meta name="description" content="Instant Polymarket wallet PnL, win rate, hidden entry fees, unclaimed redeemable winnings, shareable Trader Cards, CSV tax export & x402 USDC API." />
+  <meta name="description" content="Instant Polymarket wallet PnL, win rate, hidden entry fees, unclaimed redeemable winnings, live >$5K Whale Tape, shareable Trader Cards, CSV tax export & x402 USDC API." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://polylens-zeta.vercel.app/" />
+  <meta property="og:title" content="PolyLens — Polymarket Wallet PnL, Whale Tape & x402 USDC API" />
+  <meta property="og:description" content="Audit any Polymarket wallet in 2s, track live >$5K whale bets, export 1200x630 Trader Cards, and query x402 USDC APIs on Base & Polygon." />
+  <meta property="og:image" content="https://polylens-zeta.vercel.app/og-card.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:title" content="PolyLens — Polymarket Wallet PnL, Whale Tape & x402 USDC API" />
+  <meta name="twitter:description" content="Audit any Polymarket wallet in 2s, track live >$5K whale bets, export 1200x630 Trader Cards, and query x402 USDC APIs on Base & Polygon." />
+  <meta name="twitter:image" content="https://polylens-zeta.vercel.app/og-card.png" />
   <link rel="stylesheet" href="/style.css" />
 </head>
 <body>
@@ -19,6 +28,7 @@
       </div>
       <nav class="nav-tabs">
         <button class="nav-btn active" data-tab="analyzer">Wallet Audit</button>
+        <button class="nav-btn" data-tab="whale-tape">Whale Tape 🔥</button>
         <button class="nav-btn" data-tab="movers">Market Movers</button>
         <button class="nav-btn" data-tab="agent-api">x402 Agent API</button>
       </nav>
@@ -233,7 +243,49 @@
       </div>
     </section>
 
-    <!-- TAB 2: MARKET MOVERS -->
+    <!-- TAB 2: WHALE TAPE -->
+    <section id="tab-whale-tape" class="tab-panel">
+      <div class="card section-card">
+        <div class="section-head">
+          <div>
+            <h2>Live Polymarket Whale Tape (&gt;$5,000 Bets)</h2>
+            <p class="muted small">Real-time high-conviction Polymarket trades. Click <strong>Audit Whale →</strong> on any bet to inspect that trader's lifetime PnL &amp; win rate.</p>
+          </div>
+          <div class="tape-controls">
+            <div class="pill-group" id="tape-min-group">
+              <button type="button" class="tape-filter-btn active" data-min="5000">&gt;$5K</button>
+              <button type="button" class="tape-filter-btn" data-min="25000">&gt;$25K</button>
+              <button type="button" class="tape-filter-btn" data-min="50000">&gt;$50K</button>
+            </div>
+            <div class="pill-group" id="tape-sort-group">
+              <button type="button" class="tape-sort-btn active" data-sort="recent">Latest</button>
+              <button type="button" class="tape-sort-btn" data-sort="size">Largest</button>
+            </div>
+            <button id="refresh-tape-btn" class="btn-secondary">Refresh</button>
+          </div>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Trader</th>
+                <th>Action</th>
+                <th>Market</th>
+                <th class="num">Price</th>
+                <th class="num">Size (USDC)</th>
+                <th class="num">Audit</th>
+              </tr>
+            </thead>
+            <tbody id="whale-tape-tbody">
+              <tr><td colspan="7" class="muted">Loading live whale bets...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </section>
+
+    <!-- TAB 3: MARKET MOVERS -->
     <section id="tab-movers" class="tab-panel">
       <div class="card section-card">
         <div class="section-head">
@@ -267,8 +319,10 @@
             <div class="muted-label" style="margin-top:16px;">ENDPOINTS</div>
             <ul class="endpoint-list">
               <li><code>GET /api/wallet?address=0x...</code> <span class="badge-free">FREE</span></li>
+              <li><code>GET /api/whale-tape?minUsd=5000</code> <span class="badge-free">FREE</span></li>
               <li><code>GET /api/v1/wallet/deep?address=0x...</code> <span class="badge-paid">0.05 USDC</span></li>
               <li><code>GET /api/v1/markets/movers</code> <span class="badge-paid">0.05 USDC</span></li>
+              <li><code>GET /api/v1/whale-tape?minUsd=5000</code> <span class="badge-paid">0.05 USDC</span></li>
               <li><code>GET /api/pro-report?address=0x...</code> <span class="badge-paid">3.00 USDC</span></li>
             </ul>
           </div>

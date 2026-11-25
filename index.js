@@ -11,6 +11,10 @@ const STATIC_FILES = {
   "/index.html": { file: "index.html", type: "text/html; charset=utf-8" },
   "/style.css": { file: "style.css", type: "text/css; charset=utf-8" },
   "/client.js": { file: "client.js", type: "application/javascript; charset=utf-8" },
+  "/og-card.png": { file: "og-card.png", type: "image/png" },
+  "/robots.txt": { file: "robots.txt", type: "text/plain; charset=utf-8" },
+  "/sitemap.xml": { file: "sitemap.xml", type: "application/xml; charset=utf-8" },
+  "/llms.txt": { file: "llms.txt", type: "text/plain; charset=utf-8" },
 };
 
 export default async function handler(req, res) {
