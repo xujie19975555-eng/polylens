@@ -354,10 +354,13 @@
       <div class="card section-card">
         <div class="section-head">
           <div>
-            <h2>Telegram Whale &amp; Odds Alert Bot</h2>
+            <h2>Telegram Whale &amp; Odds Alert Bot (<a href="https://t.me/polylens_alerts_bot" target="_blank" style="color:var(--accent-2); text-decoration:none;">@polylens_alerts_bot</a>)</h2>
             <p class="muted small">Real-time alerts when tracked Polymarket whales place new trades or market odds swing &ge;5%. Free tier (1 wallet + 1 market) or <strong>7 USDC / 30 days</strong> for 20+20 slots.</p>
           </div>
-          <a href="https://github.com/xujie19975555-eng/polylens/tree/main/bot" target="_blank" class="btn-secondary">View Bot Source</a>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <a href="https://t.me/polylens_alerts_bot" target="_blank" class="btn-primary">Open @polylens_alerts_bot →</a>
+            <a href="https://github.com/xujie19975555-eng/polylens/tree/main/bot" target="_blank" class="btn-secondary">View Bot Source</a>
+          </div>
         </div>
 
         <div class="api-grid">
@@ -414,7 +417,7 @@ TELEGRAM_BOT_TOKEN=your_botfather_token npm run bot</code></pre>
               <li><code>GET /api/tax-export?address=0x...</code> <span class="badge-paid">7.00 USDC</span></li>
             </ul>
             <div class="muted-label" style="margin-top:16px;">ZERO-CONFIG MCP SERVER</div>
-            <pre class="code-block"><code>npx github:xujie19975555-eng/polylens</code></pre>
+            <pre class="code-block"><code>npx -y polylens-mcp</code></pre>
           </div>
           <div class="api-box">
             <div class="muted-label">AGENT QUICKSTART (HTTP 402 FLOW)</div>

@@ -16,8 +16,8 @@ Audit any Polymarket wallet in 2 seconds with zero sign-up and zero wallet conne
 - **Pro Audit & Tax CSV (3 USDC)**: Non-custodial on-chain verification on **Base** (`USDC`) or **Polygon** (`USDC` / `USDC.e`) unlocks up to 400+ positions, full category alpha, 50 recent trades, and CSV export.
 - **2026 Tax Ledger & Koinly CSV (`/tax-export`, 7 USDC)**: Dedicated year-by-year Polymarket realized PnL & deductible entry fees statement (`Koinly / CoinTracker` CSV + printable PDF).
 - **Hyperliquid Funding-Rate Radar & Perp Wallet Audit**: Live extreme annualized funding-rate opportunities + perp equity/position x402 APIs.
-- **Telegram Whale & Odds Alert Bot (`bot/`)**: Free (1 wallet + 1 market) or `7 USDC / 30d` (20+20 slots).
-- **Zero-Dependency MCP Server (`mcp/polylens-mcp.mjs`)**: Run `npx github:xujie19975555-eng/polylens` inside Claude Desktop, Cursor, or Antigravity.
+- **Telegram Whale & Odds Alert Bot ([@polylens_alerts_bot](https://t.me/polylens_alerts_bot))**: Free (1 wallet + 1 market) or `7 USDC / 30d` (20+20 slots).
+- **Zero-Dependency MCP Server ([`polylens-mcp`](https://www.npmjs.com/package/polylens-mcp))**: Run `npx -y polylens-mcp` inside Claude Desktop, Cursor, or Antigravity.
 - **Native x402 Agent API (0.05 USDC/call)**: Machine-to-machine HTTP `402` pay-per-call JSON feeds for AI agents and trading bots.
 
 ## API & x402 Endpoints

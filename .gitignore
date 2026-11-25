@@ -5,3 +5,6 @@ node_modules/
 .env
 .treasury-last.json
 bot/data/
+.npm-credentials.txt
+mcp-publish/
+.npmrc

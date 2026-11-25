@@ -3,7 +3,8 @@
 > Live App: https://polylens-zeta.vercel.app
 > 2026 Tax CSV Export: https://polylens-zeta.vercel.app/tax-export
 > x402 Discovery: https://polylens-zeta.vercel.app/.well-known/x402.json
-> MCP Server: npx github:xujie19975555-eng/polylens
+> MCP Server: npx -y polylens-mcp
+> Telegram Bot: https://t.me/polylens_alerts_bot
 > Treasury (Base & Polygon USDC): 0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6
 
 PolyLens provides real-time, non-custodial Polymarket & Hyperliquid intelligence and machine-to-machine HTTP 402 (x402) data feeds settled natively in USDC on Base (chainId 8453) and Polygon (chainId 137).
