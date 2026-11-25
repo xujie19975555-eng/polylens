@@ -459,3 +459,134 @@ export async function fetchWhaleTape({ minUsd = 5000, limit = 30, sort = "recent
   }
   return normalized.slice(0, limit);
 }
+
+function getPositionTaxYear(p) {
+  if (p.lastEventAt) {
+    return new Date(Number(p.lastEventAt) * 1000).getUTCFullYear();
+  }
+  if (p.endDate && /^\d{4}/.test(p.endDate)) {
+    return Number(p.endDate.slice(0, 4));
+  }
+  return null;
+}
+
+export function buildTaxCsv(positions) {
+  const headers = [
+    "Date",
+    "Sent Amount",
+    "Sent Currency",
+    "Received Amount",
+    "Received Currency",
+    "Fee Amount",
+    "Fee Currency",
+    "Net Worth Amount",
+    "Net Worth Currency",
+    "Label",
+    "Description",
+    "Market",
+  ];
+  const esc = (v) => {
+    const s = String(v ?? "");
+    return /[",\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+  };
+  const lines = [headers.join(",")];
+  for (const p of positions) {
+    const dateIso = p.lastEventAt
+      ? new Date(Number(p.lastEventAt) * 1000).toISOString().replace("T", " ").slice(0, 19) + " UTC"
+      : p.endDate || "";
+    const cost = Math.max(0, p.entryCostUsdc);
+    const proceeds = Math.max(0, cost + p.realizedPnl);
+    const label = p.realizedPnl >= 0 ? "realized_profit" : "realized_loss";
+    lines.push(
+      [
+        dateIso,
+        cost.toFixed(2),
+        "USDC",
+        proceeds.toFixed(2),
+        "USDC",
+        p.entryFeesUsdc.toFixed(4),
+        "USDC",
+        p.realizedPnl.toFixed(2),
+        "USDC",
+        label,
+        `${p.outcome} | ${p.category}`,
+        p.title,
+      ]
+        .map(esc)
+        .join(",")
+    );
+  }
+  return lines.join("\n");
+}
+
+export async function buildTaxReport(address, { year = "2026", full = false } = {}) {
+  const inputAddr = address.trim().toLowerCase();
+  const profile = await fetchJson(`${GAMMA_API}/public-profile?address=${inputAddr}`).catch(() => null);
+  const cleanAddr = (profile?.proxyWallet || inputAddr).toLowerCase();
+
+  const maxPages = full ? 5 : 1;
+  const pageSize = 100;
+  const [rawClosed, rawRedeemable] = await Promise.all([
+    fetchPaginatedPositions(cleanAddr, "CLOSED", maxPages, pageSize).catch(() => []),
+    fetchPaginatedPositions(cleanAddr, "REDEEMABLE", 1, pageSize).catch(() => []),
+  ]);
+
+  const settledAll = [...rawClosed, ...rawRedeemable].map(normalizePosition);
+  const yearStr = String(year || "2026").trim().toLowerCase();
+  const targetYear = yearStr === "all" ? null : Number(yearStr) || 2026;
+
+  const filtered = targetYear
+    ? settledAll.filter((p) => {
+        const py = getPositionTaxYear(p);
+        return py === targetYear || py === null;
+      })
+    : settledAll;
+
+  let grossGainsUsdc = 0;
+  let grossLossesUsdc = 0;
+  let deductibleFeesUsdc = 0;
+  for (const p of filtered) {
+    const pnl = p.realizedPnl || p.totalPnl;
+    if (pnl >= 0) grossGainsUsdc += pnl;
+    else grossLossesUsdc += Math.abs(pnl);
+    deductibleFeesUsdc += p.entryFeesUsdc;
+  }
+  const netRealizedUsdc = grossGainsUsdc - grossLossesUsdc;
+  const netAfterFeesUsdc = netRealizedUsdc - deductibleFeesUsdc;
+
+  const sorted = [...filtered].sort((a, b) => Math.abs(b.realizedPnl) - Math.abs(a.realizedPnl));
+  const displayName =
+    profile?.pseudonym ||
+    rawClosed[0]?.name ||
+    `${cleanAddr.slice(0, 6)}...${cleanAddr.slice(-4)}`;
+
+  const result = {
+    tier: full ? "pro_tax" : "preview",
+    address: cleanAddr,
+    displayName,
+    year: targetYear ?? "all",
+    settledCount: filtered.length,
+    grossGainsUsdc: Number(grossGainsUsdc.toFixed(2)),
+    grossLossesUsdc: Number(grossLossesUsdc.toFixed(2)),
+    netRealizedUsdc: Number(netRealizedUsdc.toFixed(2)),
+    deductibleFeesUsdc: Number(deductibleFeesUsdc.toFixed(2)),
+    netAfterFeesUsdc: Number(netAfterFeesUsdc.toFixed(2)),
+    taxableEvents: (full ? sorted : sorted.slice(0, 3)).map((p) => ({
+      date: p.lastEventAt
+        ? new Date(Number(p.lastEventAt) * 1000).toISOString().slice(0, 10)
+        : p.endDate || "-",
+      title: p.title,
+      outcome: p.outcome,
+      category: p.category,
+      costUsdc: Number(p.entryCostUsdc.toFixed(2)),
+      feesUsdc: Number(p.entryFeesUsdc.toFixed(4)),
+      realizedPnlUsdc: Number(p.realizedPnl.toFixed(2)),
+    })),
+    lockedRows: Math.max(0, sorted.length - 3),
+  };
+
+  if (full) {
+    result.csv = buildTaxCsv(sorted);
+  }
+  return result;
+}

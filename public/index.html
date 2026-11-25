@@ -29,7 +29,9 @@
       <nav class="nav-tabs">
         <button class="nav-btn active" data-tab="analyzer">Wallet Audit</button>
         <button class="nav-btn" data-tab="whale-tape">Whale Tape 🔥</button>
+        <button class="nav-btn" data-tab="hl-funding">HL Funding ⚡</button>
         <button class="nav-btn" data-tab="movers">Market Movers</button>
+        <a href="/tax-export" class="nav-btn" style="text-decoration:none;">2026 Tax CSV</a>
         <button class="nav-btn" data-tab="tg-alerts">TG Alerts 🔔</button>
         <button class="nav-btn" data-tab="agent-api">x402 Agent API</button>
       </nav>
@@ -286,7 +288,52 @@
       </div>
     </section>
 
-    <!-- TAB 3: MARKET MOVERS -->
+    <!-- TAB 3: HYPERLIQUID FUNDING RADAR -->
+    <section id="tab-hl-funding" class="tab-panel">
+      <div class="card section-card">
+        <div class="section-head">
+          <div>
+            <h2>Hyperliquid Extreme Funding-Rate Arbitrage Radar</h2>
+            <p class="muted small">Live perpetual markets (&gt;$500K 24h volume) sorted by extreme annualized funding APR. Top-50 feed available via x402 (<code>0.05 USDC</code>).</p>
+          </div>
+          <button id="refresh-hl-btn" class="btn-secondary">Refresh</button>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Symbol</th>
+                <th>Direction</th>
+                <th>Arb Hint</th>
+                <th class="num">Mark Px</th>
+                <th class="num">24h Vol</th>
+                <th class="num">Open Interest</th>
+                <th class="num">Annualized APR</th>
+              </tr>
+            </thead>
+            <tbody id="hl-funding-tbody">
+              <tr><td colspan="7" class="muted">Loading live Hyperliquid funding rates...</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div class="card section-card">
+        <div class="section-head">
+          <div>
+            <h2>Hyperliquid Perp Wallet Equity Preview</h2>
+            <p class="muted small">Free equity, margin &amp; fill PnL preview. Full open positions JSON available via <code>/api/v1/hyperliquid/wallet</code> (0.05 USDC).</p>
+          </div>
+        </div>
+        <form id="hl-wallet-form" class="search-box" style="margin-bottom:12px;">
+          <input id="hl-wallet-input" type="text" placeholder="Paste Hyperliquid EVM wallet (0x...)" spellcheck="false" />
+          <button type="submit" id="hl-wallet-btn" class="btn-primary">Check Perp Equity</button>
+        </form>
+        <div id="hl-wallet-result" class="muted small">Enter any Hyperliquid 0x address to preview account value and margin usage.</div>
+      </div>
+    </section>
+
+    <!-- TAB 4: MARKET MOVERS -->
     <section id="tab-movers" class="tab-panel">
       <div class="card section-card">
         <div class="section-head">
@@ -356,11 +403,18 @@ TELEGRAM_BOT_TOKEN=your_botfather_token npm run bot</code></pre>
             <ul class="endpoint-list">
               <li><code>GET /api/wallet?address=0x...</code> <span class="badge-free">FREE</span></li>
               <li><code>GET /api/whale-tape?minUsd=5000</code> <span class="badge-free">FREE</span></li>
+              <li><code>GET /api/tax-preview?address=0x...</code> <span class="badge-free">FREE</span></li>
+              <li><code>GET /api/hyperliquid/funding</code> <span class="badge-free">FREE</span></li>
               <li><code>GET /api/v1/wallet/deep?address=0x...</code> <span class="badge-paid">0.05 USDC</span></li>
               <li><code>GET /api/v1/markets/movers</code> <span class="badge-paid">0.05 USDC</span></li>
               <li><code>GET /api/v1/whale-tape?minUsd=5000</code> <span class="badge-paid">0.05 USDC</span></li>
+              <li><code>GET /api/v1/hyperliquid/funding</code> <span class="badge-paid">0.05 USDC</span></li>
+              <li><code>GET /api/v1/hyperliquid/wallet?address=0x...</code> <span class="badge-paid">0.05 USDC</span></li>
               <li><code>GET /api/pro-report?address=0x...</code> <span class="badge-paid">3.00 USDC</span></li>
+              <li><code>GET /api/tax-export?address=0x...</code> <span class="badge-paid">7.00 USDC</span></li>
             </ul>
+            <div class="muted-label" style="margin-top:16px;">ZERO-CONFIG MCP SERVER</div>
+            <pre class="code-block"><code>npx github:xujie19975555-eng/polylens</code></pre>
           </div>
           <div class="api-box">
             <div class="muted-label">AGENT QUICKSTART (HTTP 402 FLOW)</div>

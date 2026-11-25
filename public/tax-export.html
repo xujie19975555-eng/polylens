@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>PolyLens — 2026 Polymarket Tax CSV Export &amp; Realized PnL Statement</title>
+  <meta name="description" content="Generate a Koinly/CoinTracker-ready 2026 Polymarket Tax CSV and printable realized PnL &amp; fee statement in seconds. Non-custodial Base &amp; Polygon USDC settlement." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://polylens-zeta.vercel.app/tax-export" />
+  <meta property="og:title" content="PolyLens — 2026 Polymarket Tax CSV &amp; PnL Statement" />
+  <meta property="og:description" content="Preview your 2026 Polymarket realized gains, losses &amp; deductible fees free — export full Koinly-ready Tax CSV for 7 USDC." />
+  <meta property="og:image" content="https://polylens-zeta.vercel.app/og-card.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://polylens-zeta.vercel.app/og-card.png" />
+  <link rel="stylesheet" href="/style.css" />
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="/" class="brand" style="text-decoration:none; color:inherit;">
+        <span class="brand-dot"></span>
+        <span class="brand-name">PolyLens</span>
+        <span class="brand-tag">TAX EDITION</span>
+      </a>
+      <nav class="nav-tabs">
+        <a href="/" class="nav-btn" style="text-decoration:none;">← Back to Wallet &amp; Whale Tape</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" style="padding: 28px 0 48px;">
+    <div class="hero">
+      <div class="pill">Koinly / CoinTracker CSV Format · 2026 &amp; 2025 Supported · Zero Sign-Up</div>
+      <h1>2026 <span class="gradient-text">Polymarket</span> Tax Ledger &amp; CSV Export</h1>
+      <p class="subtitle">
+        Preview your settled realized gains, losses, and deductible entry fees free.
+        Unlock the full up-to-500-event Koinly-ready CSV &amp; printable PDF statement for <strong>7 USDC</strong>.
+      </p>
+
+      <form id="tax-form" class="search-box">
+        <input id="tax-wallet" type="text" placeholder="Paste Polymarket EOA or proxy wallet (0x...)" spellcheck="false" />
+        <select id="tax-year" style="background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0 12px; font-weight:600;">
+          <option value="2026" selected>2026</option>
+          <option value="2025">2025</option>
+          <option value="all">All Years</option>
+        </select>
+        <button type="submit" id="tax-btn" class="btn-primary">Preview Tax Summary</button>
+      </form>
+      <div class="whale-row">
+        <span class="whale-label">Try sample whale:</span>
+        <button type="button" class="chip" id="sample-tax-btn">0x2c33...0563 (Rank #1)</button>
+      </div>
+      <div id="tax-error" class="error-banner hidden"></div>
+    </div>
+
+    <div id="tax-loading" class="loading-state hidden">
+      <div class="spinner"></div>
+      <p>Aggregating settled &amp; redeemable Polymarket positions...</p>
+    </div>
+
+    <div id="tax-results" class="hidden">
+      <div class="kpi-grid" style="grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); margin-bottom: 16px;">
+        <div class="card kpi">
+          <div class="muted-label">NET REALIZED PNL</div>
+          <div id="t-net" class="kpi-value">—</div>
+          <div id="t-count" class="kpi-sub">—</div>
+        </div>
+        <div class="card kpi">
+          <div class="muted-label">GROSS GAINS</div>
+          <div id="t-gains" class="kpi-value pos">—</div>
+          <div class="kpi-sub">Settled winning positions</div>
+        </div>
+        <div class="card kpi">
+          <div class="muted-label">GROSS LOSSES</div>
+          <div id="t-losses" class="kpi-value neg">—</div>
+          <div class="kpi-sub">Settled losing positions</div>
+        </div>
+        <div class="card kpi">
+          <div class="muted-label">DEDUCTIBLE FEES</div>
+          <div id="t-fees" class="kpi-value warn">—</div>
+          <div id="t-after-fees" class="kpi-sub">—</div>
+        </div>
+      </div>
+
+      <div id="tax-paywall" class="card pro-card">
+        <div class="pro-left">
+          <div class="pro-eyebrow">INSTANT ON-CHAIN UNLOCK · BASE &amp; POLYGON USDC</div>
+          <h2>Export Full Tax CSV &amp; Statement — <span class="accent">7 USDC</span></h2>
+          <ul class="pro-list">
+            <li>Up to 500 settled &amp; redeemable positions (<span id="t-locked-note">additional rows locked</span>)</li>
+            <li>Koinly / CoinTracker compatible CSV columns (<code>Date, Sent, Received, Fee, Label, Market</code>)</li>
+            <li>Printable PDF-ready statement for your accountant</li>
+          </ul>
+        </div>
+        <div class="pro-right">
+          <div class="chain-toggle">
+            <button type="button" class="chain-btn active" data-chain="base">Base USDC</button>
+            <button type="button" class="chain-btn" data-chain="polygon">Polygon USDC</button>
+            <button type="button" class="chain-btn" data-chain="polygon_e">Polygon USDC.e</button>
+          </div>
+          <button id="tax-wallet-pay-btn" class="btn-primary full-width">Pay 7 USDC with Browser Wallet</button>
+          <div class="divider"><span>or send 7 USDC manually &amp; paste tx hash</span></div>
+          <div class="copy-row">
+            <code>0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6</code>
+            <button type="button" id="tax-copy-btn" class="btn-mini">Copy</button>
+          </div>
+          <div class="verify-row">
+            <input id="tax-tx-input" type="text" placeholder="Paste 0x transaction hash..." spellcheck="false" />
+            <button type="button" id="tax-verify-btn" class="btn-secondary">Verify</button>
+          </div>
+          <div id="tax-pay-status" class="pay-status hidden"></div>
+        </div>
+      </div>
+
+      <div id="tax-unlocked-bar" class="card unlocked-bar hidden">
+        <div>
+          <strong>Full Tax Ledger Unlocked!</strong>
+          <span id="tax-tx-info" class="muted small"></span>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button id="tax-download-csv-btn" class="btn-primary">Download Tax CSV</button>
+          <button id="tax-print-btn" class="btn-secondary">Print / Save PDF</button>
+        </div>
+      </div>
+
+      <div class="card section-card">
+        <div class="section-head">
+          <h2>Taxable Settled Events</h2>
+          <span id="tax-tier-pill" class="tier-pill free">PREVIEW</span>
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Settled Date</th>
+                <th>Market</th>
+                <th>Outcome</th>
+                <th class="num">Cost Basis</th>
+                <th class="num">Entry Fees</th>
+                <th class="num">Realized PnL</th>
+              </tr>
+            </thead>
+            <tbody id="tax-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer container">
+    <span>PolyLens Tax Export · Informational crypto ledger only (not formal tax advice)</span>
+    <span class="mono small muted">Treasury: 0xcC52...7FF6</span>
+  </footer>
+
+  <script src="/tax-export.js" type="module"></script>
+</body>
+</html>

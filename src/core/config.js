@@ -4,6 +4,8 @@ export const TREASURY_LOWER = TREASURY_ADDRESS.toLowerCase();
 export const PRICING = {
   proReportUsdc: 3,
   proReportAtomic: 3_000_000n,
+  taxExportUsdc: 7,
+  taxExportAtomic: 7_000_000n,
   x402CallUsdc: 0.05,
   x402CallAtomic: 50_000n,
 };

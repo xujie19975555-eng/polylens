@@ -3,6 +3,7 @@
   "framework": null,
   "outputDirectory": "public",
   "rewrites": [
+    { "source": "/tax-export", "destination": "/tax-export.html" },
     { "source": "/api/(.*)", "destination": "/api/router" },
     { "source": "/.well-known/x402.json", "destination": "/api/router" }
   ]

@@ -1,12 +1,16 @@
 {
   "name": "polylens",
-  "version": "1.2.0",
-  "description": "Polymarket Wallet PnL, Whale Tape, TG Alerts & x402 USDC Micropayment API",
+  "version": "2.0.0",
+  "description": "Polymarket Wallet PnL, 2026 Tax CSV, Hyperliquid Funding Radar, TG Alerts & x402 USDC API + MCP Server",
   "type": "module",
+  "bin": {
+    "polylens-mcp": "./mcp/polylens-mcp.mjs"
+  },
   "scripts": {
     "dev": "node server.mjs",
     "start": "node server.mjs",
     "bot": "node bot/telegram-bot.mjs",
+    "mcp": "node mcp/polylens-mcp.mjs",
     "test": "node --test tests/*.test.mjs"
   },
   "engines": {

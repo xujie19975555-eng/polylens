@@ -71,11 +71,12 @@ function switchTab(tabName) {
     p.classList.toggle("active", p.id === `tab-${tabName}`);
   });
   if (tabName === "whale-tape") loadWhaleTape();
+  if (tabName === "hl-funding") loadHyperliquidFunding();
   if (tabName === "movers") loadMovers();
 }
 
 // Navigation tabs
-document.querySelectorAll(".nav-btn").forEach((btn) => {
+document.querySelectorAll("button.nav-btn").forEach((btn) => {
   btn.addEventListener("click", () => switchTab(btn.dataset.tab));
 });
 
@@ -602,6 +603,57 @@ document.querySelectorAll(".tape-sort-btn").forEach((btn) => {
 });
 
 $("refresh-tape-btn").addEventListener("click", loadWhaleTape);
+
+async function loadHyperliquidFunding() {
+  const tbody = $("hl-funding-tbody");
+  tbody.innerHTML = `<tr><td colspan="7" class="muted">Fetching live Hyperliquid perpetual funding rates...</td></tr>`;
+  try {
+    const res = await fetch("/api/hyperliquid/funding?minVol=500000");
+    const data = await res.json();
+    const rows = data.markets || [];
+    if (!rows.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="muted">No Hyperliquid markets found.</td></tr>`;
+      return;
+    }
+    tbody.innerHTML = rows
+      .map(
+        (m) => `
+      <tr>
+        <td><strong>${escapeHtml(m.symbol)}</strong> <span class="muted small">${m.maxLeverage}x</span></td>
+        <td><span class="side-pill ${m.aprPct >= 0 ? "buy" : "sell"}">${escapeHtml(m.direction)}</span></td>
+        <td class="small muted">${escapeHtml(m.arbHint)}</td>
+        <td class="num">$${Number(m.markPx).toFixed(m.markPx < 1 ? 4 : 2)}</td>
+        <td class="num">${fmtUsd(m.volume24hUsd)}</td>
+        <td class="num">${fmtUsd(m.openInterestUsd)}</td>
+        <td class="num ${m.aprPct >= 0 ? "pos" : "neg"}"><strong>${m.aprPct >= 0 ? "+" : ""}${m.aprPct.toFixed(1)}%</strong></td>
+      </tr>`
+      )
+      .join("");
+  } catch (err) {
+    tbody.innerHTML = `<tr><td colspan="7" class="neg">${escapeHtml(err.message)}</td></tr>`;
+  }
+}
+
+$("refresh-hl-btn").addEventListener("click", loadHyperliquidFunding);
+
+$("hl-wallet-form").addEventListener("submit", async (e) => {
+  e.preventDefault();
+  const addr = ($("hl-wallet-input").value || "").trim();
+  const box = $("hl-wallet-result");
+  if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) {
+    box.innerHTML = `<span class="neg">Enter a valid 42-character 0x EVM address.</span>`;
+    return;
+  }
+  box.textContent = "Querying Hyperliquid clearinghouse...";
+  try {
+    const res = await fetch(`/api/v1/hyperliquid/wallet?address=${encodeURIComponent(addr)}&preview=1`);
+    const d = await res.json();
+    if (!res.ok) throw new Error(d.message || "Failed");
+    box.innerHTML = `<strong>Account Equity:</strong> ${fmtUsd(d.accountValueUsd)} · <strong>Margin Used:</strong> ${fmtUsd(d.totalMarginUsedUsd)} · <strong>Open Positions:</strong> ${d.openPositionsCount} · <strong>Recent Fills PnL (${d.recentFillsSampled}):</strong> <span class="${d.recentRealizedPnlUsd >= 0 ? "pos" : "neg"}">${fmtUsd(d.recentRealizedPnlUsd, true)}</span>`;
+  } catch (err) {
+    box.innerHTML = `<span class="neg">${escapeHtml(err.message)}</span>`;
+  }
+});
 
 // Search submit
 $("search-form").addEventListener("submit", (e) => {
