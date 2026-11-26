@@ -1,5 +1,10 @@
 # PolyLens Changelog
 
+## 2026-11-26 (Autopilot Growth Launch) — Daily Whale-PnL X Draft Generator & Live X Thread
+- Added `scripts/generate-x-drafts.mjs` (`buildXDrafts`, `renderDraftsMarkdown`, `generateDailyXDrafts`) generating <=255-char whale/tax X main tweets, self-reply tax CTA + sample + wallet audit links, and Reddit troubleshooting drafts into `ops/drafts/YYYY-MM-DD.md` without requiring X API write tokens.
+- Added unit tests in `tests/autopilot.test.mjs` enforcing <=255 char main tweet limit and fallback behavior.
+- Published live 2-post thread on `@xujie19975555` (`https://x.com/xujie19975555/status/2125781801763484117` + reply `https://x.com/xujie19975555/status/2125781994458247421`).
+
 ## 2026-11-26 (Autopilot Iteration 2) — Kalshi vs. Polymarket Tax SEO & TG Bot Tax CTA
 - Published `/kalshi-vs-polymarket-tax` SEO guide (`public/kalshi-vs-polymarket-tax.html`) wired into `index.js`, `vercel.json`, `public/sitemap.xml`, `public/llms.txt`, and cross-linked across `/tax-export`, `/polymarket-form-8949-tax`, and `/polymarket-tax-csv-koinly`.
 - Added pre-filled `https://polylens-zeta.vercel.app/tax-export?w=<address>` upsell CTAs to `@polylens_alerts_bot` `/audit` and `/watch` replies (`bot/commands.js`, verified in `tests/bot.test.mjs`).

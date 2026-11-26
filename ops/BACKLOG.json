@@ -120,7 +120,7 @@
       "id": "daily-whale-pnl-x-drafts",
       "title": "Create automated daily whale-PnL X post draft generator in ops/drafts/",
       "priority": "P1",
-      "status": "ready",
+      "status": "done",
       "category": "growth",
       "ownerFiles": [
         "scripts/generate-x-drafts.mjs",

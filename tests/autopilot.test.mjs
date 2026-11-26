@@ -21,6 +21,7 @@ import {
   assertTaxExport402,
   runVerifyChecks,
 } from "../scripts/verify-live.mjs";
+import { buildXDrafts, renderDraftsMarkdown } from "../scripts/generate-x-drafts.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, "..");
@@ -234,4 +235,31 @@ test("verify-live.mjs assertion helpers validate payloads and fail cleanly on mi
   const failSummary = await runVerifyChecks({ baseUrl: "https://example.test", fetchImpl: badFetch });
   assert.equal(failSummary.ok, false);
   assert.equal(failSummary.passed, 8);
+});
+
+test("buildXDrafts enforces <=255 char main tweet and includes tax-export + wallet URLs in reply", () => {
+  const liveDrafts = buildXDrafts({
+    dateStr: "2026-11-26",
+    topTrade: {
+      wallet: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      usdValue: 184250,
+      side: "BUY",
+      outcome: "Yes",
+      title: "Will the Federal Reserve cut interest rates by 25 bps at the December FOMC meeting in 2026?",
+    },
+  });
+  assert.equal(liveDrafts.usedLiveWhale, true);
+  assert.ok(liveDrafts.mainTweet.length <= 255, `Expected <=255, got ${liveDrafts.mainTweet.length}`);
+  assert.equal(liveDrafts.mainTweet.includes("http"), false);
+  assert.ok(liveDrafts.replyTweet.includes("https://polylens-zeta.vercel.app/tax-export"));
+  assert.ok(liveDrafts.replyTweet.includes("https://polylens-zeta.vercel.app/?w=0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
+
+  const fallbackDrafts = buildXDrafts({ dateStr: "2026-11-26", topTrade: null });
+  assert.equal(fallbackDrafts.usedLiveWhale, false);
+  assert.ok(fallbackDrafts.mainTweet.length <= 255);
+  assert.ok(fallbackDrafts.replyTweet.includes("0x8fbc899fe286351fb21f23c32710e3facb8a5c63"));
+
+  const md = renderDraftsMarkdown(liveDrafts);
+  assert.ok(md.includes("## Main Tweet"));
+  assert.ok(md.includes("## Reddit Troubleshooting Draft"));
 });
