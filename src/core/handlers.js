@@ -8,6 +8,11 @@ import {
 } from "./polymarket.js";
 import { fetchHyperliquidFunding } from "./hyperliquid.js";
 import {
+  buildPolymarketBuilderHeaders,
+  fetchPolymarketOrderbook,
+  getBuilderStatus,
+} from "./builder.js";
+import {
   buildAwakenCsv,
   buildCoinLedgerCsv,
   buildFifoTaxReport,
@@ -170,6 +175,7 @@ export async function handleApiRequest({
   searchParams,
   method = "GET",
   headers = {},
+  body = "",
   deps = {},
 }) {
   if (method === "OPTIONS") {
@@ -186,6 +192,9 @@ export async function handleApiRequest({
   const taxFn = deps.buildFifoTaxReport || buildFifoTaxReport;
   const metricFn = deps.incrementMetric || incrementMetric;
   const getMetricsFn = deps.getRecentMetrics || getRecentMetrics;
+  const builderStatusFn = deps.getBuilderStatus || getBuilderStatus;
+  const polyBookFn = deps.fetchPolymarketOrderbook || fetchPolymarketOrderbook;
+  const runtimeEnv = deps.env || process.env;
 
   try {
     if (pathname === "/api/health" || pathname === "/.well-known/x402.json") {
@@ -400,6 +409,99 @@ export async function handleApiRequest({
           markets,
         },
         { "Cache-Control": "public, max-age=30" }
+      );
+    }
+
+    if (pathname === "/api/builder/status") {
+      const userAddress = searchParams.get("user") || "";
+      const chainIdHex = searchParams.get("chainIdHex") || "0x2105";
+      const status = await builderStatusFn({
+        userAddress,
+        chainIdHex,
+        env: runtimeEnv,
+        ...(deps.fetchImpl ? { fetchImpl: deps.fetchImpl } : {}),
+      });
+      return jsonResp(200, status, { "Cache-Control": "no-store" });
+    }
+
+    if (pathname === "/api/builder/polymarket/book") {
+      const tokenId = String(searchParams.get("tokenId") || "").trim();
+      if (!tokenId || !/^[A-Za-z0-9_-]{1,160}$/.test(tokenId)) {
+        return jsonResp(400, {
+          error: "invalid_token_id",
+          message: "Provide a valid Polymarket tokenId.",
+        });
+      }
+      try {
+        const book = await polyBookFn(tokenId, deps.fetchImpl);
+        return jsonResp(200, book, { "Cache-Control": "public, max-age=5" });
+      } catch (err) {
+        if (err?.statusCode === 400 || err?.code === "invalid_token_id") {
+          return jsonResp(400, {
+            error: "invalid_token_id",
+            message: err.message,
+          });
+        }
+        return jsonResp(502, {
+          error: "upstream_error",
+          message: err?.message || "Failed to fetch Polymarket orderbook",
+        });
+      }
+    }
+
+    if (pathname === "/api/builder/polymarket/sign") {
+      if (method !== "POST") {
+        return jsonResp(405, { error: "method_not_allowed" });
+      }
+      const creds = {
+        key: runtimeEnv.POLY_BUILDER_API_KEY || "",
+        secret: runtimeEnv.POLY_BUILDER_SECRET || "",
+        passphrase: runtimeEnv.POLY_BUILDER_PASSPHRASE || "",
+      };
+      if (!creds.key || !creds.secret || !creds.passphrase) {
+        return jsonResp(503, { error: "builder_unconfigured" });
+      }
+
+      let payload = null;
+      if (body && typeof body === "object" && !Array.isArray(body)) {
+        payload = body;
+      } else if (typeof body === "string" && body.trim()) {
+        try {
+          const parsed = JSON.parse(body);
+          if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
+            payload = parsed;
+          }
+        } catch {
+          payload = null;
+        }
+      }
+      if (!payload) {
+        return jsonResp(400, {
+          error: "invalid_json",
+          message: "Request body must be a JSON object.",
+        });
+      }
+
+      const rawSignBody =
+        payload.body === undefined || payload.body === null
+          ? ""
+          : typeof payload.body === "string"
+          ? payload.body
+          : JSON.stringify(payload.body);
+
+      const signed = buildPolymarketBuilderHeaders({
+        method: payload.method,
+        path: payload.path,
+        body: rawSignBody,
+        creds,
+      });
+      if (!signed.ok) {
+        return jsonResp(400, { error: signed.error || "disallowed_path" });
+      }
+      return jsonResp(
+        200,
+        { headers: signed.headers },
+        { "Cache-Control": "no-store" }
       );
     }
 

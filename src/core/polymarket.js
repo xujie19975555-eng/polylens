@@ -450,6 +450,8 @@ export async function fetchWhaleTape({ minUsd = 5000, limit = 30, sort = "recent
           : "Unknown",
       category: inferCategory(t.title, t.slug),
       txHash: t.transaction_hash || "",
+      tokenId: String(t.token_id || ""),
+      conditionId: String(t.condition_id || ""),
     };
   });
 

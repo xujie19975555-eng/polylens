@@ -1,5 +1,16 @@
 # PolyLens Changelog
 
+## 2026-11-26 — v3.2.0 Non-Custodial Polymarket Whale Copy Drawer & Hyperliquid Funding Radar / ApproveBuilderFee
+- **Whale Copy Drawer (`public/builder-trade.js`, `public/client.js`, `public/index.html`):**
+  - Added `Copy →` action next to `Audit Whale →` in the Whale Tape table backed by an in-memory trade array (no raw JSON in DOM attributes).
+  - Added non-custodial `#copy-whale-drawer` displaying live `/api/builder/polymarket/book` best ask/bid/spread/ask depth, `>= 3¢` price-drift warning banner, USDC stake chips (`$10`/`$25`/`$50`/`$100` + custom input) with est. shares & max `$1` payout, EIP-1193 wallet connect, Builder Attribution pill, and direct Polymarket market CTA.
+- **Hyperliquid Funding Radar & 1-Click `ApproveBuilderFee` (`public/builder-trade.js`, `public/index.html`, `public/style.css`):**
+  - Added 5th navigation tab `HL Funding & Trade` (`#tab-hl-trade`) and `?tab=whale-tape` / `?tab=hl-trade` deep-link support.
+  - Added Builder Activation card (`/api/builder/status`) and 1-click non-custodial `eth_signTypedData_v4` → `{ r, s, v }` → `https://api.hyperliquid.xyz/exchange` `ApproveBuilderFee` submission.
+  - Added live `/api/hyperliquid/funding` APR table with inline `{ b, f }` builder trade ticket preview and `https://app.hyperliquid.xyz/trade/<symbol>` links.
+- **Server Adapter (`index.js`):**
+  - Added `/builder-trade.js` static route and 32KB-capped request body reader forwarding `body` to `handleApiRequest` for non-GET/HEAD requests.
+
 ## 2026-11-26 (Autopilot Growth Launch) — Daily Whale-PnL X Draft Generator & Live X Thread
 - Added `scripts/generate-x-drafts.mjs` (`buildXDrafts`, `renderDraftsMarkdown`, `generateDailyXDrafts`) generating <=255-char whale/tax X main tweets, self-reply tax CTA + sample + wallet audit links, and Reddit troubleshooting drafts into `ops/drafts/YYYY-MM-DD.md` without requiring X API write tokens.
 - Added unit tests in `tests/autopilot.test.mjs` enforcing <=255 char main tweet limit and fallback behavior.

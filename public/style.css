@@ -323,3 +323,86 @@ th.num, td.num { text-align: right; font-family: var(--mono); font-variant-numer
 .side-pill.buy { background: rgba(16, 185, 129, 0.16); color: var(--green); }
 .side-pill.sell { background: rgba(244, 63, 94, 0.16); color: var(--red); }
 .audit-whale-btn:hover { border-color: var(--accent-2); color: var(--accent-2); }
+.copy-whale-btn:hover { border-color: var(--green); color: var(--green); }
+.tape-actions { display: inline-flex; gap: 6px; align-items: center; justify-content: flex-end; }
+
+.nav-tabs { display: flex; gap: 6px; flex-wrap: wrap; }
+@media (max-width: 780px) {
+  .topbar-inner { height: auto; min-height: 60px; padding: 10px 0; flex-wrap: wrap; }
+}
+
+.status-pill {
+  display: inline-flex; align-items: center; font-size: 11px; font-weight: 700;
+  padding: 3px 9px; border-radius: 999px; white-space: nowrap;
+}
+.status-pill.ok {
+  background: rgba(16, 185, 129, 0.16); color: var(--green); border: 1px solid rgba(16, 185, 129, 0.35);
+}
+.status-pill.pending {
+  background: rgba(245, 158, 11, 0.14); color: var(--amber); border: 1px solid rgba(245, 158, 11, 0.35);
+}
+.status-pill.err {
+  background: rgba(244, 63, 94, 0.14); color: #fda4af; border: 1px solid rgba(244, 63, 94, 0.35);
+}
+
+.hl-head-actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.hl-status-grid {
+  display: grid; grid-template-columns: repeat(auto-fit, minmax(175px, 1fr)); gap: 10px;
+  margin-bottom: 14px;
+}
+.hl-stat-box {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 10px; padding: 11px 12px;
+}
+.hl-approve-bar {
+  display: flex; align-items: center; gap: 12px; flex-wrap: wrap;
+}
+.hl-split-grid {
+  display: grid; grid-template-columns: 1.55fr 1fr; gap: 16px; align-items: start;
+}
+@media (max-width: 920px) { .hl-split-grid { grid-template-columns: 1fr; } }
+.hl-trade-btn:hover { border-color: var(--accent-2); color: var(--accent-2); }
+
+.drawer-backdrop {
+  position: fixed; inset: 0; z-index: 60;
+  background: rgba(4, 6, 12, 0.72); backdrop-filter: blur(4px);
+  display: flex; justify-content: flex-end;
+}
+.drawer-panel {
+  width: min(440px, 100vw); height: 100%; overflow-y: auto;
+  background: var(--surface); border-left: 1px solid var(--border-hi);
+  padding: 22px 20px; display: flex; flex-direction: column; gap: 14px;
+  box-shadow: -16px 0 40px rgba(0, 0, 0, 0.5);
+}
+.drawer-head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; }
+.drawer-meta-row { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.drawer-box {
+  background: var(--surface-2); border: 1px solid var(--border); border-radius: 12px; padding: 13px 14px;
+}
+.drawer-warn {
+  padding: 10px 12px; border-radius: 10px; font-size: 12.5px;
+  background: rgba(245, 158, 11, 0.14); border: 1px solid rgba(245, 158, 11, 0.4); color: #fde68a;
+}
+.drawer-book-grid, .drawer-payout-grid {
+  display: grid; grid-template-columns: repeat(2, 1fr); gap: 10px;
+}
+.stake-chips { display: grid; grid-template-columns: repeat(4, 1fr); gap: 6px; margin-bottom: 10px; }
+.stake-chip {
+  background: rgba(0, 0, 0, 0.25); color: var(--muted); border: 1px solid var(--border);
+  border-radius: 8px; padding: 7px 6px; font-family: var(--mono); font-size: 12px; font-weight: 700; cursor: pointer;
+}
+.stake-chip.active {
+  color: #fff; border-color: var(--accent-2); background: rgba(34, 211, 238, 0.14);
+}
+.stake-input-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; margin-bottom: 12px;
+}
+.stake-input-row input {
+  width: 140px; background: rgba(0, 0, 0, 0.3); border: 1px solid var(--border);
+  border-radius: 8px; color: var(--text); font-family: var(--mono); font-size: 13px; padding: 7px 10px; outline: none;
+}
+.stake-input-row input:focus { border-color: var(--border-hi); }
+.drawer-wallet-row, .drawer-builder-row {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px; flex-wrap: wrap;
+}
+.drawer-builder-row { margin-top: 10px; padding-top: 10px; border-top: 1px solid var(--border); }
+.drawer-actions { margin-top: auto; padding-top: 4px; }

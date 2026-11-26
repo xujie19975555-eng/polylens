@@ -7,6 +7,25 @@ import { handleApiRequest } from "./src/core/handlers.js";
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const PUBLIC_DIR = path.join(__dirname, "public");
 const PORT = Number(process.env.PORT || 8787);
+const MAX_BODY_BYTES = 32 * 1024;
+
+async function readRequestBody(req) {
+  const method = (req.method || "GET").toUpperCase();
+  if (method !== "POST" && method !== "DELETE") return "";
+  const chunks = [];
+  let total = 0;
+  for await (const chunk of req) {
+    const buf = Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk);
+    total += buf.length;
+    if (total > MAX_BODY_BYTES) {
+      const err = new Error("Payload too large");
+      err.statusCode = 413;
+      throw err;
+    }
+    chunks.push(buf);
+  }
+  return Buffer.concat(chunks).toString("utf8");
+}
 
 const MIME = {
   ".html": "text/html; charset=utf-8",
@@ -22,11 +41,23 @@ const server = http.createServer(async (req, res) => {
   const url = new URL(req.url || "/", `http://${req.headers.host || "localhost"}`);
 
   if (url.pathname.startsWith("/api/") || url.pathname === "/.well-known/x402.json") {
+    let body = "";
+    try {
+      body = await readRequestBody(req);
+    } catch (err) {
+      if (err?.statusCode === 413) {
+        res.writeHead(413, { "Content-Type": "application/json; charset=utf-8" });
+        res.end(JSON.stringify({ error: "payload_too_large" }));
+        return;
+      }
+      throw err;
+    }
     const result = await handleApiRequest({
       pathname: url.pathname,
       searchParams: url.searchParams,
       method: req.method || "GET",
       headers: req.headers || {},
+      body,
     });
     res.writeHead(result.status, result.headers);
     res.end(result.body);

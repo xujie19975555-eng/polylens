@@ -32,6 +32,7 @@
         <button class="nav-btn" data-tab="whale-tape">Whale Tape</button>
         <a href="/tax-export" class="nav-btn" style="text-decoration:none; color: var(--accent-2); font-weight:700;">2026 Tax CSV (7 USDC)</a>
         <button class="nav-btn" data-tab="tg-alerts">TG Alerts</button>
+        <button class="nav-btn" data-tab="hl-trade">HL Funding &amp; Trade</button>
       </nav>
     </div>
   </header>
@@ -267,13 +268,189 @@
         </div>
       </div>
     </section>
+    <!-- TAB 4: HYPERLIQUID FUNDING RADAR & NON-CUSTODIAL BUILDER TRADE -->
+    <section id="tab-hl-trade" class="tab-panel">
+      <div class="card section-card hl-builder-card">
+        <div class="section-head">
+          <div>
+            <div class="pro-eyebrow">100% NON-CUSTODIAL · EIP-712 CLIENT SIGNING</div>
+            <h2>Hyperliquid Builder Activation &amp; Fee Approval</h2>
+            <p class="muted small">Connect MetaMask or Rabby to sign <code>ApproveBuilderFee</code> directly in your wallet — zero private keys ever leave your browser.</p>
+          </div>
+          <div class="hl-head-actions">
+            <span id="hl-wallet-pill" class="status-pill pending">Wallet Not Connected</span>
+            <button type="button" id="hl-connect-btn" class="btn-secondary">Connect Wallet</button>
+            <button type="button" id="hl-refresh-btn" class="btn-ghost">Refresh</button>
+          </div>
+        </div>
+
+        <div class="hl-status-grid">
+          <div class="hl-stat-box">
+            <div class="muted-label">BUILDER ADDRESS</div>
+            <div id="hl-builder-addr" class="mono small" style="margin-top:6px;">0xcC52...7FF6</div>
+          </div>
+          <div class="hl-stat-box">
+            <div class="muted-label">PROTOCOL ACTIVATION</div>
+            <div style="margin-top:6px;"><span id="hl-active-pill" class="status-pill pending">Checking...</span></div>
+          </div>
+          <div class="hl-stat-box">
+            <div class="muted-label">ACCOUNT VALUE VS 100 USDC MIN</div>
+            <div id="hl-account-val" class="mono small" style="margin-top:6px;">— / 100 USDC</div>
+          </div>
+          <div class="hl-stat-box">
+            <div class="muted-label">MAX BUILDER FEE</div>
+            <div id="hl-fee-display" class="mono small" style="margin-top:6px;">0.05% (f: 50)</div>
+          </div>
+          <div class="hl-stat-box">
+            <div class="muted-label">USER APPROVAL STATUS</div>
+            <div style="margin-top:6px;"><span id="hl-approved-pill" class="status-pill pending">Connect Wallet to Check</span></div>
+          </div>
+        </div>
+
+        <div class="hl-approve-bar">
+          <button type="button" id="hl-approve-btn" class="btn-primary">1-Click Approve Builder Fee (0.05%)</button>
+          <span class="muted small">Signs Hyperliquid <code>ApproveBuilderFee</code> typed data &amp; submits directly to <code>api.hyperliquid.xyz/exchange</code>.</span>
+        </div>
+        <div id="hl-approve-result" class="pay-status hidden"></div>
+      </div>
+
+      <div class="hl-split-grid">
+        <div class="card section-card">
+          <div class="section-head">
+            <div>
+              <h2>Live Hyperliquid Funding Radar</h2>
+              <p class="muted small">High-volume perps (&ge;$500K 24h vol) ranked by annualized funding APR.</p>
+            </div>
+          </div>
+          <div class="table-wrap">
+            <table>
+              <thead>
+                <tr>
+                  <th>Symbol</th>
+                  <th class="num">Max Lev</th>
+                  <th class="num">1h Funding</th>
+                  <th class="num">APR</th>
+                  <th class="num">Open Interest</th>
+                  <th>Arb Hint</th>
+                  <th class="num">Trade</th>
+                </tr>
+              </thead>
+              <tbody id="hl-funding-tbody">
+                <tr><td colspan="7" class="muted">Loading Hyperliquid funding markets...</td></tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+
+        <div id="hl-trade-ticket" class="card section-card hl-ticket-card">
+          <div class="muted-label">BUILDER TRADE TICKET PREVIEW</div>
+          <h2 id="hl-ticket-symbol" style="margin:6px 0 4px;">Select a Market</h2>
+          <p id="hl-ticket-meta" class="muted small" style="margin:0 0 12px;">Click <strong>Trade →</strong> on any funding row to preview its non-custodial builder attribution payload.</p>
+          <div class="muted-label">BUILDER ATTRIBUTION PAYLOAD</div>
+          <pre id="hl-ticket-payload" class="code-block"><code>{
+  "b": "0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6",
+  "f": 50
+}</code></pre>
+          <div style="margin-top:14px;">
+            <a id="hl-ticket-link" href="https://app.hyperliquid.xyz/trade" target="_blank" rel="noopener noreferrer" class="btn-primary full-width">Open on Hyperliquid →</a>
+          </div>
+        </div>
+      </div>
+    </section>
   </main>
+
+  <div id="copy-whale-drawer" class="drawer-backdrop hidden" aria-hidden="true">
+    <aside class="drawer-panel" role="dialog" aria-modal="true" aria-labelledby="cw-title">
+      <div class="drawer-head">
+        <div>
+          <div class="pro-eyebrow">NON-CUSTODIAL WHALE COPY TICKET</div>
+          <h2 id="cw-title" style="margin:4px 0 0; font-size:17px;">Loading market...</h2>
+        </div>
+        <button type="button" id="cw-close-btn" class="btn-ghost" aria-label="Close drawer">✕</button>
+      </div>
+
+      <div class="drawer-meta-row">
+        <span id="cw-side-pill" class="side-pill buy">—</span>
+        <span class="muted small">Whale: <strong id="cw-wallet-addr" class="mono">—</strong></span>
+        <span class="muted small">Entry: <strong id="cw-whale-price" class="mono">—</strong></span>
+        <span class="muted small">Size: <strong id="cw-whale-size" class="mono">—</strong></span>
+      </div>
+
+      <div id="cw-slippage-warn" class="drawer-warn hidden"></div>
+
+      <div class="drawer-box">
+        <div class="section-head" style="margin-bottom:8px;">
+          <span class="muted-label">LIVE POLYMARKET CLOB BOOK</span>
+          <span id="cw-book-status" class="muted small">Checking live book...</span>
+        </div>
+        <div class="drawer-book-grid">
+          <div>
+            <div class="muted-label">BEST ASK</div>
+            <div id="cw-best-ask" class="mono" style="font-weight:700;">—</div>
+          </div>
+          <div>
+            <div class="muted-label">BEST BID</div>
+            <div id="cw-best-bid" class="mono" style="font-weight:700;">—</div>
+          </div>
+          <div>
+            <div class="muted-label">SPREAD</div>
+            <div id="cw-spread-bps" class="mono" style="font-weight:700;">—</div>
+          </div>
+          <div>
+            <div class="muted-label">ASK DEPTH</div>
+            <div id="cw-ask-depth" class="mono" style="font-weight:700;">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="drawer-box">
+        <div class="muted-label" style="margin-bottom:8px;">STAKE SIZE (USDC)</div>
+        <div class="stake-chips">
+          <button type="button" class="stake-chip" data-stake="10">$10</button>
+          <button type="button" class="stake-chip active" data-stake="25">$25</button>
+          <button type="button" class="stake-chip" data-stake="50">$50</button>
+          <button type="button" class="stake-chip" data-stake="100">$100</button>
+        </div>
+        <div class="stake-input-row">
+          <label for="cw-stake-input" class="muted small">Custom USDC</label>
+          <input id="cw-stake-input" type="number" min="1" step="1" value="25" />
+        </div>
+        <div class="drawer-payout-grid">
+          <div>
+            <div class="muted-label">EST. SHARES</div>
+            <div id="cw-est-shares" class="mono" style="font-weight:700;">—</div>
+          </div>
+          <div>
+            <div class="muted-label">MAX $1 PAYOUT</div>
+            <div id="cw-max-payout" class="mono pos" style="font-weight:700;">—</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="drawer-box">
+        <div class="drawer-wallet-row">
+          <button type="button" id="cw-connect-btn" class="btn-secondary">Connect Wallet</button>
+          <span id="cw-wallet-status" class="mono small muted">Not connected</span>
+        </div>
+        <div class="drawer-builder-row">
+          <span class="muted-label">BUILDER ATTRIBUTION</span>
+          <span id="cw-builder-badge" class="status-pill pending">Checking...</span>
+        </div>
+      </div>
+
+      <div class="drawer-actions">
+        <a id="cw-trade-cta" href="https://polymarket.com" target="_blank" rel="noopener noreferrer" class="btn-primary full-width">Open Market on Polymarket →</a>
+        <p class="muted small" style="margin:8px 0 0; text-align:center;">100% non-custodial: PolyLens never asks for private keys or executes custody transfers.</p>
+      </div>
+    </aside>
+  </div>
 
   <footer class="footer container">
     <span>PolyLens · Free Polymarket v2 analytics &amp; 2026 FIFO Tax CSV · Non-custodial Base &amp; Polygon USDC</span>
     <span class="mono small muted">Treasury: 0xcC52...7FF6</span>
   </footer>
 
+  <script src="/builder-trade.js" type="module"></script>
   <script src="/client.js" type="module"></script>
 </body>
 </html>

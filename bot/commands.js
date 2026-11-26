@@ -135,7 +135,13 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
       (t, i) =>
         `${i + 1}. ${fmtUsd(t.usdValue)} ${t.side} ${t.outcome} @ ${(t.price * 100).toFixed(1)}c\n   ${t.title}\n   Wallet: ${t.wallet}`
     );
-    return [`Top Live Polymarket Whale Bets (>= $${minUsd.toLocaleString()}):`, "", ...lines].join("\n");
+    return [
+      `Top Live Polymarket Whale Bets (>= $${minUsd.toLocaleString()}):`,
+      "",
+      ...lines,
+      "",
+      "Copy on Web Whale Tape: https://polylens-zeta.vercel.app/?tab=whale-tape",
+    ].join("\n");
   }
 
   if (cmd === "/watch") {

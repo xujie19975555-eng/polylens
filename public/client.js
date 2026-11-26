@@ -1,6 +1,7 @@
 let currentReport = null;
 let tapeMinUsd = 5000;
 let tapeSort = "recent";
+let whaleTapeTrades = [];
 
 const $ = (id) => document.getElementById(id);
 
@@ -34,6 +35,7 @@ function switchTab(tabName) {
     p.classList.toggle("active", p.id === `tab-${tabName}`);
   });
   if (tabName === "whale-tape") loadWhaleTape();
+  if (tabName === "hl-trade") window.loadHlTradeTab?.();
 }
 
 document.querySelectorAll("button.nav-btn").forEach((btn) => {
@@ -288,13 +290,14 @@ async function loadWhaleTape() {
     const res = await fetch(`/api/whale-tape?minUsd=${tapeMinUsd}&sort=${tapeSort}`);
     const data = await res.json();
     const trades = data.trades || [];
+    whaleTapeTrades = trades;
     if (!trades.length) {
       tbody.innerHTML = `<tr><td colspan="7" class="muted">No recent trades above $${tapeMinUsd.toLocaleString()} found.</td></tr>`;
       return;
     }
     tbody.innerHTML = trades
       .map(
-        (t) => `
+        (t, idx) => `
       <tr>
         <td class="mono small muted">${fmtRelativeTime(t.timestamp)}</td>
         <td class="mono small">${escapeHtml(t.traderName.slice(0, 18))}</td>
@@ -302,10 +305,23 @@ async function loadWhaleTape() {
         <td><a class="market-link" target="_blank" href="${escapeHtml(t.url)}">${escapeHtml(t.title)}</a></td>
         <td class="num">${(t.price * 100).toFixed(1)}¢</td>
         <td class="num pos"><strong>${fmtUsd(t.usdValue)}</strong></td>
-        <td class="num"><button type="button" class="btn-mini audit-whale-btn" data-wallet="${escapeHtml(t.wallet)}">Audit Whale →</button></td>
+        <td class="num">
+          <div class="tape-actions">
+            <button type="button" class="btn-mini copy-whale-btn" data-idx="${idx}">Copy →</button>
+            <button type="button" class="btn-mini audit-whale-btn" data-wallet="${escapeHtml(t.wallet)}">Audit Whale →</button>
+          </div>
+        </td>
       </tr>`
       )
       .join("");
+
+    tbody.querySelectorAll(".copy-whale-btn").forEach((btn) => {
+      btn.addEventListener("click", () => {
+        const idx = Number(btn.dataset.idx);
+        const trade = Number.isInteger(idx) ? whaleTapeTrades[idx] : null;
+        if (trade) window.openCopyWhaleDrawer?.(trade);
+      });
+    });
 
     tbody.querySelectorAll(".audit-whale-btn").forEach((btn) => {
       btn.addEventListener("click", () => {
@@ -347,8 +363,13 @@ $("search-form").addEventListener("submit", (e) => {
 });
 
 loadLeaderboard();
-const initialWallet = new URLSearchParams(window.location.search).get("w");
+const initialParams = new URLSearchParams(window.location.search);
+const initialWallet = initialParams.get("w");
+const initialTab = initialParams.get("tab");
 if (initialWallet) {
   $("wallet-input").value = initialWallet;
   runWalletAudit(initialWallet);
+}
+if (initialTab && ["analyzer", "whale-tape", "hl-trade", "tg-alerts"].includes(initialTab)) {
+  switchTab(initialTab);
 }
