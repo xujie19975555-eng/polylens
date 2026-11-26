@@ -21,7 +21,12 @@ import {
   assertTaxExport402,
   runVerifyChecks,
 } from "../scripts/verify-live.mjs";
-import { buildXDrafts, renderDraftsMarkdown } from "../scripts/generate-x-drafts.mjs";
+import {
+  buildXDrafts,
+  hasPublishedOnDate,
+  pickDailyAngle,
+  renderDraftsMarkdown,
+} from "../scripts/generate-x-drafts.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, "..");
@@ -276,4 +281,32 @@ test("buildXDrafts enforces <=255 char main tweet and includes tax-export + wall
   assert.ok(md.includes("## Reddit Troubleshooting Draft"));
   assert.equal(liveDrafts.redditDraft.includes("http"), false);
   assert.equal(liveDrafts.redditDraft.includes("7 USDC"), false);
+});
+
+test("daily angle rotation, hl-poly-macro draft, and ops/published-log.json deduplication", () => {
+  assert.equal(pickDailyAngle("2026-11-23"), "whale-tax");
+  assert.equal(pickDailyAngle("2026-11-26"), "hl-poly-macro");
+  assert.equal(pickDailyAngle("2026-11-28"), "tax-proof");
+
+  const macro = buildXDrafts({
+    dateStr: "2026-11-26",
+    topFunding: { symbol: "SOL", aprPct: 68.4 },
+    topTrade: {
+      wallet: "0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+      usdValue: 55000,
+      side: "BUY",
+      outcome: "Yes",
+      title: "SOL above $250 in November?",
+    },
+  });
+  assert.equal(macro.angle, "hl-poly-macro");
+  assert.ok(macro.mainTweet.length <= 255);
+  assert.equal(macro.mainTweet.includes("http"), false);
+  assert.ok(macro.mainTweet.includes("SOL-PERP"));
+  assert.ok(macro.replyTweet.includes("/?tab=hl-trade"));
+
+  const logPath = path.join(ROOT_DIR, "ops", "published-log.json");
+  const logData = JSON.parse(fs.readFileSync(logPath, "utf8"));
+  assert.equal(hasPublishedOnDate(logData, "2026-11-26", "x"), true);
+  assert.equal(hasPublishedOnDate(logData, "2026-11-27", "x"), false);
 });

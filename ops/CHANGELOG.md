@@ -1,5 +1,13 @@
 # PolyLens Changelog
 
+## 2026-11-26 — v3.4.0 Full Closed-Loop Daily Autopilot Distribution & Proxy Support
+- **Deduplicated Daily X / Weekly Reddit Autopilot (`ops/AUTOPILOT.md`, `ops/published-log.json`, `polylens-daily-autopilot/sidecar.json`):**
+  - Created `ops/published-log.json` seeded with `2026-11-26` X (`@xujie19975555`) and Reddit (`r/Polymarket` megathread) entries to prevent double posting.
+  - Added Autopilot Step 7 dispatching `@xujie19975555` daily 1-thread X publishing (and Monday-only `r/Polymarket` megathread updates) via `browser` subagent with strict `NEEDS_HUMAN` stop on CAPTCHA/auth loss, and updated `sidecar.json` grants (`x.com`, `reddit.com`, `node --use-env-proxy`).
+- **Node v24 Proxy Fix & Multi-Angle Content (`scripts/generate-x-drafts.mjs`, `com.polylens.daily-audit.plist`, `tests/autopilot.test.mjs`):**
+  - Enabled `--use-env-proxy` across Autopilot commands and `com.polylens.daily-audit.plist` so Node `fetch` works behind local system proxies.
+  - Added `pickDailyAngle` (Mon/Wed/Fri `whale-tax`, Tue/Thu `hl-poly-macro`, Sat/Sun `tax-proof`), `hasPublishedOnDate`, live `/api/hyperliquid/funding` fetching, and unit tests.
+
 ## 2026-11-26 — v3.3.0 Growth Funnel, Inline Tax Preview, Card Attribution & Demand-Gate Telemetry
 - **Inline Tax Conversion & Free Samples (`public/index.html`, `public/client.js`, `bot/commands.js`):**
   - Wired wallet audit reports (`renderReport`) directly to `/api/tax-preview?address=...&year=2026` with monotonic request-ID guard to display wallet-specific 2026 taxable event counts and deductible-loss preservation inline in `.pro-card`.

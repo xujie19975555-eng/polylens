@@ -22,24 +22,57 @@ function truncateText(str, maxLen) {
   return `${s.slice(0, Math.max(0, maxLen - 1)).trimEnd()}…`;
 }
 
+export function pickDailyAngle(dateStr = formatAuditDate()) {
+  const parsed = new Date(`${String(dateStr || "").trim()}T00:00:00Z`);
+  if (Number.isNaN(parsed.getTime())) return "whale-tax";
+  const day = parsed.getUTCDay();
+  if (day === 2 || day === 4) return "hl-poly-macro";
+  if (day === 0 || day === 6) return "tax-proof";
+  return "whale-tax";
+}
+
+export function hasPublishedOnDate(logData, dateStr, channel = "x") {
+  const entries = Array.isArray(logData?.entries) ? logData.entries : [];
+  return entries.some(
+    (entry) => entry?.date === dateStr && (entry?.channel || "x") === channel
+  );
+}
+
 export function buildXDrafts({
   dateStr = formatAuditDate(),
   topTrade = null,
+  topFunding = null,
   baseUrl = DEFAULT_BASE_URL,
   walletUrl = null,
   taxUrl = null,
+  angle = null,
 } = {}) {
   const cleanBase = String(baseUrl || DEFAULT_BASE_URL).replace(/\/+$/, "");
+  const resolvedAngle = angle || pickDailyAngle(dateStr);
   const hasLiveTrade = Boolean(
     topTrade && topTrade.wallet && Number(topTrade.usdValue || 0) > 0 && topTrade.title
+  );
+  const hasLiveFunding = Boolean(
+    topFunding && topFunding.symbol && Number.isFinite(Number(topFunding.aprPct))
   );
   const targetWallet = hasLiveTrade ? String(topTrade.wallet).trim() : FALLBACK_WALLET;
   const resolvedWalletUrl = walletUrl || `${cleanBase}/?w=${targetWallet}`;
   const resolvedTaxUrl = taxUrl || `${cleanBase}/tax-export`;
   const sampleUrl = `${cleanBase}/api/tax-sample?format=koinly`;
+  const hlUrl = `${cleanBase}/?tab=hl-trade`;
 
   let mainTweet;
-  if (hasLiveTrade) {
+  if (resolvedAngle === "hl-poly-macro" && hasLiveFunding) {
+    const sym = String(topFunding.symbol).toUpperCase().slice(0, 12);
+    const apr = Number(topFunding.aprPct);
+    const aprLabel = `${apr >= 0 ? "+" : ""}${apr.toFixed(1)}%`;
+    const tradeSuffix = hasLiveTrade
+      ? ` Plus Polymarket whale flow: ${fmtUsdCompact(topTrade.usdValue)} ${String(
+          topTrade.side || "BUY"
+        ).toUpperCase()} on "${truncateText(topTrade.title, 36)}".`
+      : ` Reminder: raw Polygon tax syncs drop $0 losing CTF settlements before Dec 31.`;
+    mainTweet = `Hyperliquid top funding setup (${dateStr}): ${sym}-PERP at ${aprLabel} APR.${tradeSuffix}`;
+  } else if (resolvedAngle !== "tax-proof" && hasLiveTrade) {
     const usdLabel = fmtUsdCompact(topTrade.usdValue);
     const side = String(topTrade.side || "BUY").toUpperCase();
     const outcome = truncateText(topTrade.outcome || "Yes", 12);
@@ -57,11 +90,16 @@ export function buildXDrafts({
     mainTweet = `${mainTweet.slice(0, 254).trimEnd()}`;
   }
 
-  const replyTweet =
-    `Free Polymarket FIFO tax scan + free Koinly sample CSV (no signup):\n` +
-    `Tax Export (7 USDC for full Koinly / IRS Form 8949 / CoinLedger / Awaken): ${resolvedTaxUrl}\n` +
-    `Sample CSV: ${sampleUrl}\n` +
-    `Wallet audit: ${resolvedWalletUrl}`;
+  const replyLines = [
+    `Free Polymarket FIFO tax scan + free Koinly sample CSV (no signup):`,
+    `Tax Export (7 USDC for full Koinly / IRS Form 8949 / CoinLedger / Awaken): ${resolvedTaxUrl}`,
+    `Sample CSV: ${sampleUrl}`,
+    `Wallet audit: ${resolvedWalletUrl}`,
+  ];
+  if (resolvedAngle === "hl-poly-macro" && hasLiveFunding) {
+    replyLines.push(`HL radar: ${hlUrl}`);
+  }
+  const replyTweet = replyLines.join("\n");
 
   const redditDraft = [
     `### How to Fix Missing Losses & Zero-Cost-Basis Bugs When Importing Polymarket Into Koinly / Form 8949`,
@@ -80,6 +118,7 @@ export function buildXDrafts({
 
   return {
     dateStr,
+    angle: resolvedAngle,
     wallet: targetWallet,
     walletUrl: resolvedWalletUrl,
     taxUrl: resolvedTaxUrl,
@@ -95,6 +134,7 @@ export function renderDraftsMarkdown(drafts) {
     `# PolyLens Daily X & Reddit Drafts — ${drafts.dateStr}`,
     ``,
     `- **Generated At:** ${new Date().toISOString()}`,
+    `- **Angle:** ${drafts.angle || "whale-tax"}`,
     `- **Source:** ${drafts.usedLiveWhale ? "Live /api/whale-tape top trade" : "Fallback live-tested Koinly proof (ukowna)"}`,
     `- **Referenced Wallet:** \`${drafts.wallet}\``,
     `- **Main Tweet Length:** ${drafts.mainTweet.length}/255 chars`,
@@ -130,10 +170,28 @@ async function fetchTopWhaleTrade(baseUrl = DEFAULT_BASE_URL) {
   }
 }
 
+async function fetchTopHlFunding(baseUrl = DEFAULT_BASE_URL) {
+  try {
+    const res = await fetch(`${baseUrl}/api/hyperliquid/funding`, {
+      headers: { "User-Agent": "PolyLensAutopilot/1.0", Accept: "application/json" },
+      signal: AbortSignal.timeout(8000),
+    });
+    if (!res.ok) return null;
+    const data = await res.json();
+    const markets = Array.isArray(data?.markets) ? data.markets : [];
+    return markets.find((m) => m?.symbol && Number.isFinite(Number(m?.aprPct))) || null;
+  } catch {
+    return null;
+  }
+}
+
 export async function generateDailyXDrafts({ rootDir = ROOT_DIR, baseUrl = DEFAULT_BASE_URL } = {}) {
   const dateStr = formatAuditDate();
-  const topTrade = await fetchTopWhaleTrade(baseUrl);
-  const drafts = buildXDrafts({ dateStr, topTrade, baseUrl });
+  const [topTrade, topFunding] = await Promise.all([
+    fetchTopWhaleTrade(baseUrl),
+    fetchTopHlFunding(baseUrl),
+  ]);
+  const drafts = buildXDrafts({ dateStr, topTrade, topFunding, baseUrl });
   const md = renderDraftsMarkdown(drafts);
 
   const draftsDir = path.join(rootDir, "ops", "drafts");

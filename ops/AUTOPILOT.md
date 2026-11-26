@@ -7,9 +7,9 @@ This document defines the zero-human daily review and engineering loop for PolyL
 1. **Run Daily Audit & Generate X/Reddit Drafts**
    - Execute:
      ```bash
-     node /Users/xujie/.gemini/antigravity/scratch/polylens/scripts/daily-audit.mjs && node /Users/xujie/.gemini/antigravity/scratch/polylens/scripts/generate-x-drafts.mjs
+     node --use-env-proxy /Users/xujie/.gemini/antigravity/scratch/polylens/scripts/daily-audit.mjs && node --use-env-proxy /Users/xujie/.gemini/antigravity/scratch/polylens/scripts/generate-x-drafts.mjs
      ```
-   - Read the generated `ops/reviews/YYYY-MM-DD.md` (and `ops/metrics/YYYY-MM-DD.json`), `ops/drafts/YYYY-MM-DD.md`, plus `ops/BACKLOG.json`.
+   - Read the generated `ops/reviews/YYYY-MM-DD.md` (and `ops/metrics/YYYY-MM-DD.json`), `ops/drafts/YYYY-MM-DD.md`, `ops/published-log.json`, plus `ops/BACKLOG.json`.
 
 2. **Evaluate Health, Treasury, Funnel, Errors & Tests**
    - Confirm production endpoints (`/api/health`, `/api/metrics`, `/tax-export`, `/polymarket-tax-csv-koinly`, `/polymarket-form-8949-tax`) return HTTP 200 and `/api/metrics` reports `"backend": "redis"`.
@@ -39,14 +39,23 @@ This document defines the zero-human daily review and engineering loop for PolyL
 6. **Verify Live Deployment**
    - Wait briefly if Vercel deployment is still building, then run:
      ```bash
-     node /Users/xujie/.gemini/antigravity/scratch/polylens/scripts/verify-live.mjs
+     node --use-env-proxy /Users/xujie/.gemini/antigravity/scratch/polylens/scripts/verify-live.mjs
      ```
    - Confirm exit code `0` (all routes HTTP 200, `/api/metrics` backend `"redis"`, `/api/tax-sample` CSV headers valid, unpaid `/api/tax-export` HTTP 402).
 
-7. **Update Ops Records**
+7. **Autonomous Daily Distribution (X + Weekly Reddit Megathread)**
+   - **Daily X (`@xujie19975555`, strict max 1 thread/day):**
+     - Check `ops/published-log.json`. If today's date (`YYYY-MM-DD`) already has `"channel": "x"`, skip posting.
+     - Otherwise read `ops/drafts/YYYY-MM-DD.md`, delegate to the `browser` subagent (`Model: "flash"`) to open `https://x.com/compose/post`, confirm logged in as `@xujie19975555`, publish `Main Tweet`, open the posted status URL, and publish `Self-Reply Tweet` as a direct reply.
+     - Append `{ "date": "YYYY-MM-DD", "channel": "x", "account": "@xujie19975555", "angle": "...", "url": "...", "replyUrl": "..." }` to `ops/published-log.json`.
+     - If logged out, blocked, or any CAPTCHA appears, STOP immediately and log `NEEDS_HUMAN`. Never automate bulk replies or DMs.
+   - **Weekly Reddit (Mondays only, `r/Polymarket` showcase megathread):**
+     - If today is Monday (`UTC+8`) and no `"channel": "reddit"` entry in `ops/published-log.json` falls within the last 7 days, post 1 non-spam technical update comment in the active `r/Polymarket` megathread (NEVER standalone promotional posts) and append to `ops/published-log.json`.
+
+8. **Update Ops Records**
    - Update `ops/BACKLOG.json` (mark completed item `"done"`).
    - Append a factual entry to `ops/CHANGELOG.md`.
-   - Update `ops/reviews/YYYY-MM-DD.md` with today's shipped commit SHA, `verify-live.mjs` result, and any `NEEDS_HUMAN` blockers.
+   - Update `ops/reviews/YYYY-MM-DD.md` with today's shipped commit SHA, `verify-live.mjs` result, X/Reddit publish status, and any `NEEDS_HUMAN` blockers.
 
 ---
 
