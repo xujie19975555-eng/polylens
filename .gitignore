@@ -11,3 +11,4 @@ mcp-publish/
 data/
 .koinly-credentials.txt
 ops/metrics/
+.reddit-credentials.txt
