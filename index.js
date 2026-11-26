@@ -16,6 +16,8 @@ const STATIC_FILES = {
   "/polymarket-tax-csv-koinly.html": { file: "polymarket-tax-csv-koinly.html", type: "text/html; charset=utf-8" },
   "/polymarket-form-8949-tax": { file: "polymarket-form-8949-tax.html", type: "text/html; charset=utf-8" },
   "/polymarket-form-8949-tax.html": { file: "polymarket-form-8949-tax.html", type: "text/html; charset=utf-8" },
+  "/kalshi-vs-polymarket-tax": { file: "kalshi-vs-polymarket-tax.html", type: "text/html; charset=utf-8" },
+  "/kalshi-vs-polymarket-tax.html": { file: "kalshi-vs-polymarket-tax.html", type: "text/html; charset=utf-8" },
   "/style.css": { file: "style.css", type: "text/css; charset=utf-8" },
   "/client.js": { file: "client.js", type: "application/javascript; charset=utf-8" },
   "/og-card.png": { file: "og-card.png", type: "image/png" },

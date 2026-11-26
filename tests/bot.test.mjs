@@ -28,6 +28,7 @@ test("bot /watch resolves EOA to proxyWallet and enforces 5-slot limit", async (
     resolveProxyWallet: async () => proxy,
   });
   assert.ok(ok.includes(`Proxy ${proxy}`));
+  assert.ok(ok.includes(`https://polylens-zeta.vercel.app/tax-export?w=${proxy}`));
   assert.equal(store.getUser("1001").watchedWallets[0].address, proxy);
 
   for (let i = 3; i <= 6; i++) {
@@ -105,4 +106,30 @@ test("pollWatchAlerts sends all unseen multi-trades chronologically and detects 
   assert.ok(sent[1].msg.includes("Second trade"));
   assert.ok(sent[2].msg.includes("Odds Swing Alert (UP 8.0%)"));
   assert.equal(extractMarketSlug("https://polymarket.com/event/btc-150k?tid=1"), "btc-150k");
+});
+
+test("bot /audit includes pre-filled 2026 Tax CSV link for inspected wallet", async () => {
+  const store = makeTempStore();
+  const proxy = "0x3333333333333333333333333333333333333333";
+  const out = await handleBotCommand("1002", `/audit ${proxy}`, store, {
+    analyzeWallet: async () => ({
+      archetype: { grade: "A", badge: "Sharp" },
+      summary: {
+        address: proxy,
+        displayName: "tester",
+        netPnl: 12500,
+        rankPnl: 42,
+        winRate: 62.5,
+        wins: 10,
+        losses: 6,
+        profitFactor: 2.1,
+        totalFees: 45,
+        openValue: 320,
+        redeemableValue: 0,
+        redeemableCount: 0,
+      },
+    }),
+  });
+  assert.ok(out.includes(`https://polylens-zeta.vercel.app/?w=${proxy}`));
+  assert.ok(out.includes(`https://polylens-zeta.vercel.app/tax-export?w=${proxy}`));
 });

@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Kalshi vs. Polymarket Taxes (2026): 1099 Forms vs. On-Chain FIFO CSV — PolyLens</title>
+  <meta name="description" content="Compare Kalshi and Polymarket tax reporting in 2026: CFTC-regulated 1099 statements vs. non-custodial Polygon CTF redemptions, Form 8949, Koinly, CoinLedger, and Awaken CSV exports." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://polylens-zeta.vercel.app/kalshi-vs-polymarket-tax" />
+  <meta property="og:title" content="Kalshi vs. Polymarket Taxes (2026): 1099 vs. On-Chain FIFO CSV" />
+  <meta property="og:description" content="Kalshi traders get platform statements, while Polymarket settles on Polygon with no Form 1099. Learn how to export a clean FIFO CSV for Koinly, Form 8949, CoinLedger &amp; Awaken." />
+  <meta property="og:image" content="https://polylens-zeta.vercel.app/og-card.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://polylens-zeta.vercel.app/og-card.png" />
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .guide-wrap { max-width: 820px; margin: 0 auto; }
+    .guide-card { padding: 26px; margin-bottom: 18px; line-height: 1.7; }
+    .guide-card h2 { font-size: 1.25rem; margin: 0 0 12px; color: var(--text); }
+    .guide-card p { margin: 0 0 12px; color: var(--muted); }
+    .guide-card ul, .guide-card ol { margin: 0 0 12px; padding-left: 20px; color: var(--muted); }
+    .guide-card li { margin-bottom: 6px; }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="/" class="brand" style="text-decoration:none; color:inherit;">
+        <span class="brand-dot"></span>
+        <span class="brand-name">PolyLens</span>
+        <span class="brand-tag">TAX COMPARISON</span>
+      </a>
+      <nav class="nav-tabs">
+        <a href="/" class="nav-btn" style="text-decoration:none;">Wallet Audit</a>
+        <a href="/polymarket-tax-csv-koinly" class="nav-btn" style="text-decoration:none;">Koinly Guide</a>
+        <a href="/polymarket-form-8949-tax" class="nav-btn" style="text-decoration:none;">Form 8949 Guide</a>
+        <a href="/tax-export" class="nav-btn active" style="text-decoration:none;">2026 Tax CSV (7 USDC)</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" style="padding: 28px 0 56px;">
+    <div class="guide-wrap">
+      <div class="hero" style="text-align:left; margin-bottom: 24px;">
+        <div class="pill">Prediction Market Taxes · Kalshi vs. Polymarket · 2026 FIFO CSV</div>
+        <h1><span class="gradient-text">Kalshi vs. Polymarket</span> Taxes in 2026: Why You Need a FIFO CSV for Polymarket</h1>
+        <p class="subtitle" style="margin: 10px 0 0; max-width: 100%;">
+          Both platforms pay out $1.00 on winning event contracts and $0.00 on losing outcomes, but tax reporting works completely differently under the hood.
+        </p>
+        <div class="cta-row">
+          <a href="/tax-export" class="btn-primary" style="text-decoration:none;">Scan Polymarket Wallet Free →</a>
+          <a href="/api/tax-sample?format=form8949" download="polylens-sample-form8949.csv" class="btn-secondary" style="text-decoration:none;">Download Sample Form 8949 CSV</a>
+          <a href="/api/tax-sample?format=koinly" download="polylens-sample-koinly.csv" class="btn-secondary" style="text-decoration:none;">Sample Koinly CSV</a>
+        </div>
+      </div>
+
+      <section class="card guide-card">
+        <h2>1. Side-by-Side Tax Comparison: Kalshi vs. Polymarket</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Dimension</th>
+                <th>Kalshi</th>
+                <th>Polymarket</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><strong>Market Structure</strong></td>
+                <td>US CFTC-regulated Designated Contract Market</td>
+                <td>Non-custodial Polygon CTF smart contracts</td>
+              </tr>
+              <tr>
+                <td><strong>Official Tax Forms</strong></td>
+                <td>Issues annual 1099-style tax statements (e.g. 1099-MISC / brokerage summaries)</td>
+                <td class="neg">No Form 1099 issued by platform</td>
+              </tr>
+              <tr>
+                <td><strong>Settlement Asset</strong></td>
+                <td>USD bank / debit ledger</td>
+                <td>USDC / USDC.e ERC-1155 outcome shares</td>
+              </tr>
+              <tr>
+                <td><strong>Cost Basis &amp; Losses</strong></td>
+                <td>Tracked centrally per contract</td>
+                <td class="neg">Raw Polygon wallet syncs drop $0 losing redemptions</td>
+              </tr>
+              <tr>
+                <td><strong>Recommended Filing File</strong></td>
+                <td>Kalshi statement CSV</td>
+                <td class="pos">PolyLens FIFO CSV (Koinly, Form 8949, CoinLedger, Awaken)</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="card guide-card">
+        <h2>2. Why Polymarket Traders Get Over-Taxed Without FIFO Reconstruction</h2>
+        <ul>
+          <li><strong>No brokerage 1099 summary:</strong> Because trades execute against Polygon Conditional Token Framework (CTF) contracts from your self-custodied or proxy wallet, you are responsible for reconstructing every acquisition and disposal.</li>
+          <li><strong>Zero-cost-basis inflation:</strong> Importing a raw Polygon address into crypto tax tools frequently treats winning <code>REDEEM</code> payouts as unexplained USDC deposits—taxing 100% of gross payouts instead of net profit above cost basis.</li>
+          <li><strong>Missing losing redemptions:</strong> When an outcome settles to $0.00, standard token transfers often omit or mislabel the closed shares, preventing capital losses from offsetting winning markets.</li>
+          <li><strong>Separate ordinary rewards:</strong> Liquidity <code>REWARD</code>, <code>MAKER_REBATE</code>, and <code>TAKER_REBATE</code> payouts must be separated from capital disposals on IRS Form 8949.</li>
+        </ul>
+      </section>
+
+      <section class="card guide-card">
+        <h2>3. How PolyLens Bridges the Polymarket Tax Gap for 7 USDC</h2>
+        <p>
+          Instead of charging \$29–\$99/year subscriptions or requiring account registration, <a href="/tax-export" style="color:var(--accent-2);">PolyLens Tax Export</a> lets you scan any EOA or proxy address free and unlock every major tax-prep CSV with a single non-custodial <strong>7 USDC</strong> payment on Base or Polygon:
+        </p>
+        <ul>
+          <li><strong>Koinly CSV (Live-Tested):</strong> 126/126 non-zero rows imported cleanly with 0 errors and all negative loss redemptions preserved (<a href="/polymarket-tax-csv-koinly" style="color:var(--accent-2);">Koinly setup guide</a>).</li>
+          <li><strong>IRS Form 8949 / Schedule D CSV:</strong> Exact <code>Date Acquired</code> (<code>Various</code> for multi-lot sales), <code>Short-Term</code> vs. <code>Long-Term</code> classification, and $0-proceeds losing redemptions (<a href="/polymarket-form-8949-tax" style="color:var(--accent-2);">Form 8949 guide</a>).</li>
+          <li><strong>CoinLedger &amp; Awaken Tax CSVs:</strong> Pre-formatted templates with platform-accepted date strings and tags (<a href="/api/tax-sample?format=coinledger" download="polylens-sample-coinledger.csv" style="color:var(--accent-2);">Sample CoinLedger</a> · <a href="/api/tax-sample?format=awaken" download="polylens-sample-awaken.csv" style="color:var(--accent-2);">Sample Awaken</a>).</li>
+          <li><strong>Accountant Detailed Ledger:</strong> Row-by-row cost basis, proceeds, realized PnL, and Polygonscan transaction hashes.</li>
+        </ul>
+        <p class="small muted">
+          Disclaimer: PolyLens provides informational FIFO ledger exports from public Polymarket activity data and is not formal tax, accounting, or legal advice.
+        </p>
+        <div class="cta-row">
+          <a href="/tax-export" class="btn-primary" style="text-decoration:none;">Preview Your 2026 Taxable Events Free →</a>
+          <a href="/" class="btn-ghost" style="text-decoration:none;">Free Wallet Audit</a>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <footer class="footer container">
+    <span>PolyLens · Kalshi vs. Polymarket Tax Comparison · Informational FIFO ledger only (not tax advice)</span>
+    <span class="mono small muted">Treasury: 0xcC52...7FF6</span>
+  </footer>
+</body>
+</html>

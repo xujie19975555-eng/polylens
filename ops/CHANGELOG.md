@@ -1,5 +1,10 @@
 # PolyLens Changelog
 
+## 2026-11-26 (Autopilot Iteration 2) — Kalshi vs. Polymarket Tax SEO & TG Bot Tax CTA
+- Published `/kalshi-vs-polymarket-tax` SEO guide (`public/kalshi-vs-polymarket-tax.html`) wired into `index.js`, `vercel.json`, `public/sitemap.xml`, `public/llms.txt`, and cross-linked across `/tax-export`, `/polymarket-form-8949-tax`, and `/polymarket-tax-csv-koinly`.
+- Added pre-filled `https://polylens-zeta.vercel.app/tax-export?w=<address>` upsell CTAs to `@polylens_alerts_bot` `/audit` and `/watch` replies (`bot/commands.js`, verified in `tests/bot.test.mjs`).
+- Added `command(node --check)` and `command(launchctl list)` to `polylens-daily-autopilot/sidecar.json` based on live test-run verification.
+
 ## 2026-11-26 (Autopilot Iteration 1) — CoinLedger & Awaken Tax CSV Support
 - Added `buildCoinLedgerCsv` (Universal Manual Import CSV: `MM/DD/YYYY HH:MM:SS` UTC, `Income` vs `Investment Loss`, positive-only amounts, blank unused cells) and `buildAwakenCsv` (Awaken Perpetuals CSV: `close_position` / `funding_payment` tags preserving signed losses) in `src/core/tax-fifo.js`.
 - Exposed `coinledgerCsv` and `awakenCsv` in `buildFifoTaxReport(..., { full: true })` and `/api/tax-export`, plus `/api/tax-sample?format=coinledger|awaken` in `src/core/handlers.js`.

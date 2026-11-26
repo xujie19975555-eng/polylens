@@ -4,6 +4,7 @@
 > 2026 FIFO Tax CSV Export: https://polylens-zeta.vercel.app/tax-export
 > Koinly CSV Guide: https://polylens-zeta.vercel.app/polymarket-tax-csv-koinly
 > IRS Form 8949 Tax Guide: https://polylens-zeta.vercel.app/polymarket-form-8949-tax
+> Kalshi vs Polymarket Tax Guide: https://polylens-zeta.vercel.app/kalshi-vs-polymarket-tax
 > MCP Server (Free): npx -y polylens-mcp
 > Telegram Bot (Free): https://t.me/polylens_alerts_bot
 > Treasury (Base & Polygon USDC): 0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6
@@ -12,7 +13,7 @@
 - `GET /api/wallet?address=0x...` — Free Polymarket lifetime PnL, rank, win rate, entry fees burned, redeemable balance & Trader Card.
 - `GET /api/whale-tape?minUsd=5000&sort=recent` — Free top-15 live Polymarket trades above `minUsd`.
 - `GET /api/tax-preview?address=0x...&year=2026` — Free `/v2/activity` FIFO taxable event count & net direction scan.
-- `GET /api/tax-sample?format=koinly` and `GET /api/tax-sample?format=form8949` — Free downloadable sample CSVs to inspect exact Koinly and IRS Form 8949 columns before paying.
+- `GET /api/tax-sample?format=koinly|form8949|coinledger|awaken` — Free downloadable sample CSVs to inspect exact Koinly, IRS Form 8949, CoinLedger, and Awaken columns before paying.
 
 ## Paid Tax Export (7.00 USDC, Replay-Protected)
-Send 7 USDC on Base (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) or Polygon (`0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359` / `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174`) to `0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6`, then submit via `/tax-export` or `GET /api/tax-export?address=0x...&year=2026&tx=0x...` to unlock full Koinly CSV (`realized gain` spec with negative losses, live-tested 126/126 rows, 0 errors, 30 losses preserved), IRS Form 8949 CSV (`form8949Csv`), and detailed accountant ledger (`detailedCsv`).
+Send 7 USDC on Base (`0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913`) or Polygon (`0x3c499c542cEF5E3811e1192ce70d8cC03d5c3359` / `0x2791Bca1f2de4661ED88A30C99A7a9449Aa84174`) to `0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6`, then submit via `/tax-export` or `GET /api/tax-export?address=0x...&year=2026&tx=0x...` to unlock full Koinly CSV (`realized gain` spec with negative losses, live-tested 126/126 rows, 0 errors, 30 losses preserved), IRS Form 8949 CSV (`form8949Csv`), CoinLedger CSV (`coinledgerCsv`), Awaken CSV (`awakenCsv`), and detailed accountant ledger (`detailedCsv`).

@@ -121,6 +121,7 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
         ? `Unclaimed Redeemable: ${fmtUsd(s.redeemableValue)} (${s.redeemableCount} positions)`
         : "",
       `Free web report: https://polylens-zeta.vercel.app/?w=${s.address}`,
+      `2026 Tax CSV (7 USDC): https://polylens-zeta.vercel.app/tax-export?w=${s.address}`,
     ]
       .filter(Boolean)
       .join("\n");
@@ -158,9 +159,10 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
       lastTs: nowSec,
     });
     store.save();
+    const taxLink = `2026 Tax CSV (7 USDC): https://polylens-zeta.vercel.app/tax-export?w=${proxyAddr}`;
     return proxyAddr !== inputAddr
-      ? `Watching whale ${label} (resolved EOA ${inputAddr.slice(0, 8)}... -> Proxy ${proxyAddr}).`
-      : `Watching whale ${label} (${proxyAddr}). You'll get alerts on new trades.`;
+      ? `Watching whale ${label} (resolved EOA ${inputAddr.slice(0, 8)}... -> Proxy ${proxyAddr}).\n${taxLink}`
+      : `Watching whale ${label} (${proxyAddr}). You'll get alerts on new trades.\n${taxLink}`;
   }
 
   if (cmd === "/watchmarket") {

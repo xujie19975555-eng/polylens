@@ -102,7 +102,7 @@
       "id": "kalshi-vs-polymarket-tax-seo",
       "title": "Publish Kalshi vs Polymarket Tax Comparison SEO guide",
       "priority": "P0",
-      "status": "ready",
+      "status": "done",
       "category": "seo",
       "ownerFiles": [
         "public/kalshi-vs-polymarket-tax.html",
@@ -151,7 +151,7 @@
       "id": "tg-bot-pro-tax-upsell",
       "title": "Add 2026 Tax CSV pre-filled upsell CTA in @polylens_alerts_bot commands",
       "priority": "P1",
-      "status": "ready",
+      "status": "done",
       "category": "growth",
       "ownerFiles": [
         "bot/commands.js",
@@ -189,6 +189,51 @@
       ],
       "acceptanceCriteria": "GET /api/trader-card?address=0x... returns deterministic SVG trader card with PnL, rank, win rate, and tax-export CTA; Share on X links include wallet URL.",
       "revenueHypothesis": "Increases viral CTR on X when traders share their audited wallet PnL cards."
+    },
+    {
+      "id": "schedule-d-term-totals",
+      "title": "Add Short-Term vs Long-Term Schedule D subtotal breakdown in tax summary and API",
+      "priority": "P1",
+      "status": "ready",
+      "category": "product",
+      "ownerFiles": [
+        "src/core/tax-fifo.js",
+        "public/tax-export.html",
+        "public/tax-export.js",
+        "tests/v3-security-tax.test.mjs"
+      ],
+      "acceptanceCriteria": "computeFifoTaxLedger returns shortTermNetUsdc and longTermNetUsdc subtotals, exposed after payment unlock in /tax-export UI and covered by unit tests.",
+      "revenueHypothesis": "Makes Schedule D Part I / Part II line entry immediate for US self-filers."
+    },
+    {
+      "id": "polymarket-tax-loss-harvesting-seo",
+      "title": "Publish Polymarket Tax-Loss Harvesting & Deductible Losses SEO guide",
+      "priority": "P1",
+      "status": "ready",
+      "category": "seo",
+      "ownerFiles": [
+        "public/polymarket-tax-loss-harvesting.html",
+        "public/sitemap.xml",
+        "public/llms.txt",
+        "index.js",
+        "vercel.json"
+      ],
+      "acceptanceCriteria": "Serve /polymarket-tax-loss-harvesting explaining losing CTF redemptions ($0 proceeds) and Form 8949 loss offsets before year-end, indexed in sitemap.xml and llms.txt.",
+      "revenueHypothesis": "Captures late-November/December year-end search traffic from Polymarket traders offsetting winning trades."
+    },
+    {
+      "id": "polymarket-csv-mcp-tool",
+      "title": "Add free preview_polymarket_tax_events tool to polylens-mcp npm package",
+      "priority": "P2",
+      "status": "ready",
+      "category": "growth",
+      "ownerFiles": [
+        "mcp/server.mjs",
+        "mcp-publish/server.mjs",
+        "tests/v2.test.mjs"
+      ],
+      "acceptanceCriteria": "Expose read-only preview_polymarket_tax_events tool calling /api/tax-preview so MCP AI agents route Polymarket tax queries directly to /tax-export.",
+      "revenueHypothesis": "Turns MCP tool invocations from coding/crypto agents into high-intent 7 USDC tax export traffic."
     },
     {
       "id": "custom-domain-dns-setup",
