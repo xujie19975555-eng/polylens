@@ -122,6 +122,7 @@ export async function handleBotCommand(chatId, rawText, store, deps = {}) {
         : "",
       `Free web report: https://polylens-zeta.vercel.app/?w=${s.address}`,
       `2026 Tax CSV (7 USDC): https://polylens-zeta.vercel.app/tax-export?w=${s.address}`,
+      `Free Koinly sample CSV: https://polylens-zeta.vercel.app/api/tax-sample?format=koinly`,
     ]
       .filter(Boolean)
       .join("\n");

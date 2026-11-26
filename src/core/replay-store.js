@@ -129,12 +129,30 @@ export async function incrementMetric(eventName, localStorePath = LOCAL_STORE_PA
 export async function getRecentMetrics(days = 7, localStorePath = LOCAL_STORE_PATH) {
   const creds = getRedisCreds();
   const out = {};
-  const names = ["wallet_audit", "tax_preview", "pay_click", "tx_verified"];
+  const names = [
+    "wallet_audit",
+    "tax_preview",
+    "pay_click",
+    "tx_verified",
+    "copy_cta_click",
+    "hl_ticket_click",
+    "share_x_click",
+    "tax_sample_click",
+  ];
   const dates = [];
   for (let i = 0; i < days; i++) {
     const d = new Date(Date.now() - i * 86400_000).toISOString().slice(0, 10);
     dates.push(d);
-    out[d] = { wallet_audit: 0, tax_preview: 0, pay_click: 0, tx_verified: 0 };
+    out[d] = {
+      wallet_audit: 0,
+      tax_preview: 0,
+      pay_click: 0,
+      tx_verified: 0,
+      copy_cta_click: 0,
+      hl_ticket_click: 0,
+      share_x_click: 0,
+      tax_sample_click: 0,
+    };
   }
 
   if (creds) {

@@ -2,8 +2,19 @@ let currentReport = null;
 let tapeMinUsd = 5000;
 let tapeSort = "recent";
 let whaleTapeTrades = [];
+let taxPreviewReqId = 0;
 
 const $ = (id) => document.getElementById(id);
+
+function trackEvent(ev) {
+  const url = `/api/event?event=${encodeURIComponent(ev)}`;
+  try {
+    if (navigator.sendBeacon?.(url)) return;
+  } catch {
+    // Fallback to fetch keepalive below
+  }
+  fetch(url, { method: "POST", keepalive: true }).catch(() => {});
+}
 
 function fmtUsd(n, signed = false) {
   const num = Number(n || 0);
@@ -102,6 +113,36 @@ async function runWalletAudit(address) {
   }
 }
 
+async function loadInlineTaxPreview(address) {
+  const el = $("pro-tax-preview");
+  if (!el || !address) return;
+  const reqId = ++taxPreviewReqId;
+  el.textContent = "Scanning 2026 FIFO events for this wallet…";
+  try {
+    const res = await fetch(`/api/tax-preview?address=${encodeURIComponent(address)}&year=2026`);
+    const p = await res.json();
+    if (reqId !== taxPreviewReqId) return;
+    if (!res.ok) throw new Error(p?.message || "Preview unavailable");
+    const total = Number(p.totalEventsCount || 0);
+    if (total > 0) {
+      const wins = Number(p.winCount || 0);
+      const losses = Number(p.lossCount || 0);
+      const rewards = Number(p.rewardCount || 0);
+      const rwPart = rewards > 0 ? ` · ${rewards} rewards` : "";
+      const lossNote = p.hasLosses
+        ? "deductible losses preserved in FIFO CSV"
+        : "FIFO cost basis ready";
+      el.textContent = `2026 Preview: ${total} taxable events (${wins}W / ${losses}L${rwPart}) — ${lossNote}.`;
+    } else {
+      el.textContent = "No 2026 realized disposals yet for this wallet (check 2025 or download a free sample CSV).";
+    }
+  } catch {
+    if (reqId === taxPreviewReqId) {
+      el.textContent = "Click Scan above for free 2026 FIFO event count preview.";
+    }
+  }
+}
+
 function renderReport(data) {
   const { summary, archetype } = data;
   $("results-area").classList.remove("hidden");
@@ -112,6 +153,7 @@ function renderReport(data) {
   $("res-roast").textContent = archetype.roast;
 
   $("cta-tax-link").href = `/tax-export?w=${encodeURIComponent(summary.address)}`;
+  loadInlineTaxPreview(summary.address);
 
   if (summary.redeemableValue > 0.5) {
     $("redeemable-alert").innerHTML = `<strong>Unclaimed Winnings Detected:</strong> This wallet has <strong>${fmtUsd(
@@ -254,6 +296,10 @@ function renderShareCardPng() {
   ctx.fillStyle = "#cbd5e1";
   ctx.font = "500 20px system-ui, sans-serif";
   ctx.fillText(archetype.roast.slice(0, 92), 64, 558);
+
+  ctx.fillStyle = "#22d3ee";
+  ctx.font = "600 16px monospace";
+  ctx.fillText("polylens-zeta.vercel.app · Free Polymarket Audit & 2026 FIFO Tax CSV", 64, 592);
   return canvas.toDataURL("image/png");
 }
 
@@ -266,12 +312,37 @@ $("download-card-btn").addEventListener("click", () => {
   a.click();
 });
 
+$("copy-card-btn")?.addEventListener("click", async () => {
+  const dataUrl = renderShareCardPng();
+  if (!dataUrl) return;
+  const btn = $("copy-card-btn");
+  try {
+    const blob = await fetch(dataUrl).then((r) => r.blob());
+    if (navigator.clipboard?.write && typeof ClipboardItem !== "undefined") {
+      await navigator.clipboard.write([new ClipboardItem({ "image/png": blob })]);
+      btn.textContent = "Copied PNG!";
+      setTimeout(() => {
+        btn.textContent = "Copy PNG";
+      }, 1800);
+      return;
+    }
+  } catch {
+    // Fall back to download when clipboard image write is unavailable
+  }
+  $("download-card-btn")?.click();
+});
+
 $("share-x-btn").addEventListener("click", () => {
   if (!currentReport) return;
+  trackEvent("share_x_click");
   const { summary, archetype } = currentReport;
   const text = `Just audited this Polymarket wallet on PolyLens:\n\nGrade: ${archetype.grade} (${archetype.badge})\nNet PnL: ${fmtUsd(summary.netPnl, true)}\nWin Rate: ${summary.winRate.toFixed(1)}%\nFees Burned: ${fmtUsd(summary.totalFees)}\n\nCheck yours:`;
   const shareUrl = `https://x.com/intent/tweet?text=${encodeURIComponent(text)}&url=${encodeURIComponent(window.location.href)}`;
   window.open(shareUrl, "_blank", "noopener");
+});
+
+document.querySelectorAll(".tax-sample-link").forEach((link) => {
+  link.addEventListener("click", () => trackEvent("tax_sample_click"));
 });
 
 function fmtRelativeTime(ts) {

@@ -4,17 +4,17 @@ This document defines the zero-human daily review and engineering loop for PolyL
 
 ## Daily Execution Steps
 
-1. **Run Daily Audit & Inspect State**
+1. **Run Daily Audit & Generate X/Reddit Drafts**
    - Execute:
      ```bash
-     node /Users/xujie/.gemini/antigravity/scratch/polylens/scripts/daily-audit.mjs
+     node /Users/xujie/.gemini/antigravity/scratch/polylens/scripts/daily-audit.mjs && node /Users/xujie/.gemini/antigravity/scratch/polylens/scripts/generate-x-drafts.mjs
      ```
-   - Read the generated `ops/reviews/YYYY-MM-DD.md` (and `ops/metrics/YYYY-MM-DD.json`) plus `ops/BACKLOG.json`.
+   - Read the generated `ops/reviews/YYYY-MM-DD.md` (and `ops/metrics/YYYY-MM-DD.json`), `ops/drafts/YYYY-MM-DD.md`, plus `ops/BACKLOG.json`.
 
 2. **Evaluate Health, Treasury, Funnel, Errors & Tests**
    - Confirm production endpoints (`/api/health`, `/api/metrics`, `/tax-export`, `/polymarket-tax-csv-koinly`, `/polymarket-form-8949-tax`) return HTTP 200 and `/api/metrics` reports `"backend": "redis"`.
    - Review Base & Polygon USDC treasury balance + 24h delta (`0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6`).
-   - Review funnel metrics (`wallet_audit`, `tax_preview`, `pay_click`, `tx_verified`).
+   - Review funnel and demand-gate metrics (`wallet_audit`, `tax_preview`, `pay_click`, `tx_verified`, `copy_cta_click`, `hl_ticket_click`, `share_x_click`, `tax_sample_click`).
    - Verify `com.polylens.tgbot` daemon status (`launchctl list`) and `polylens-mcp` npm version.
    - Confirm existing test suite passes (`node --test tests/*.test.mjs`).
    - **Priority Override:** If any live check, test suite, or TG bot check is broken, fixing the regression takes P0 priority over new backlog features.

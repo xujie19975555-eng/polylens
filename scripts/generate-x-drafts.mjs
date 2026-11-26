@@ -75,10 +75,7 @@ export function buildXDrafts({
     `- Force losing \`REDEEM\` settlements to close open FIFO lots with \`Proceeds = $0.00\` so capital losses offset gains.`,
     `- Separate liquidity \`REWARD\` / rebates from Form 8949 capital disposals.`,
     ``,
-    `We built a tiny non-custodial tool (no signup, Base/Polygon 7 USDC flat fee only if you unlock full CSVs) that generates Koinly, IRS Form 8949, CoinLedger, and Awaken Tax CSVs. You can download a free 4-row sample CSV first or scan your taxable event count free:`,
-    `- Free Preview & Export: ${resolvedTaxUrl}`,
-    `- Free 4-row Koinly Sample CSV: ${sampleUrl}`,
-    `- Step-by-step Form 8949 guide: ${cleanBase}/polymarket-form-8949-tax`,
+    `If anyone hits Koinly / IRS Form 8949 / CoinLedger / Awaken import bugs on Polymarket settlements, happy to share a sanitized 4-row sample CSV schema or walk through the exact column mapping here (no spam links).`,
   ].join("\n");
 
   return {

@@ -153,7 +153,18 @@ test("buildReviewMarkdown renders all required sections and top 3 ready backlog 
     health: [{ path: "/api/health", status: 200, ok: true, latencyMs: 42, note: "ok" }],
     metricsSummary: extractMetricsSummary({
       backend: "redis",
-      days: { "2026-11-26": { wallet_audit: 12, tax_preview: 4, pay_click: 2, tx_verified: 1 } },
+      days: {
+        "2026-11-26": {
+          wallet_audit: 12,
+          tax_preview: 4,
+          pay_click: 2,
+          tx_verified: 1,
+          copy_cta_click: 3,
+          hl_ticket_click: 1,
+          share_x_click: 5,
+          tax_sample_click: 2,
+        },
+      },
     }),
     treasury: {
       address: "0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6",
@@ -192,6 +203,7 @@ test("buildReviewMarkdown renders all required sections and top 3 ready backlog 
     assert.ok(md.includes(heading), `Missing heading ${heading}`);
   }
   assert.ok(md.includes("wallet_audit=12"));
+  assert.ok(md.includes("copy_cta_click=3, hl_ticket_click=1, share_x_click=5, tax_sample_click=2"));
   assert.ok(md.includes("**[P0] `c`**"));
   assert.equal(md.includes("`a`"), false);
   assert.equal(md.includes("`e`"), false);
@@ -262,4 +274,6 @@ test("buildXDrafts enforces <=255 char main tweet and includes tax-export + wall
   const md = renderDraftsMarkdown(liveDrafts);
   assert.ok(md.includes("## Main Tweet"));
   assert.ok(md.includes("## Reddit Troubleshooting Draft"));
+  assert.equal(liveDrafts.redditDraft.includes("http"), false);
+  assert.equal(liveDrafts.redditDraft.includes("7 USDC"), false);
 });

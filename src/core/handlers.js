@@ -243,7 +243,17 @@ export async function handleApiRequest({
 
     if (pathname === "/api/event" && (method === "POST" || method === "GET")) {
       const ev = String(searchParams.get("event") || "").trim();
-      if (["wallet_audit", "tax_preview", "pay_click"].includes(ev)) {
+      if (
+        [
+          "wallet_audit",
+          "tax_preview",
+          "pay_click",
+          "copy_cta_click",
+          "hl_ticket_click",
+          "share_x_click",
+          "tax_sample_click",
+        ].includes(ev)
+      ) {
         await metricFn(ev);
       }
       return jsonResp(200, { ok: true, event: ev });

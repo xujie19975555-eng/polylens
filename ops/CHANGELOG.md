@@ -1,5 +1,15 @@
 # PolyLens Changelog
 
+## 2026-11-26 — v3.3.0 Growth Funnel, Inline Tax Preview, Card Attribution & Demand-Gate Telemetry
+- **Inline Tax Conversion & Free Samples (`public/index.html`, `public/client.js`, `bot/commands.js`):**
+  - Wired wallet audit reports (`renderReport`) directly to `/api/tax-preview?address=...&year=2026` with monotonic request-ID guard to display wallet-specific 2026 taxable event counts and deductible-loss preservation inline in `.pro-card`.
+  - Added 4 free `/api/tax-sample` links (`Koinly`, `Form 8949`, `CoinLedger`, `Awaken`), replaced static refund claim with real support contact (`@xujie19975555` + idempotent TxHash re-downloads), and appended a free Koinly sample CSV link to TG `/audit`.
+- **Share Card Attribution & Demand-Gate Telemetry (`public/client.js`, `public/builder-trade.js`, `src/core/handlers.js`, `src/core/replay-store.js`, `scripts/daily-audit.mjs`):**
+  - Added `polylens-zeta.vercel.app` attribution watermark on 1200×630 PNG scorecards plus a `#copy-card-btn` clipboard action.
+  - Extended `/api/event` and `/api/metrics` allowlists + `daily-audit.mjs` review summaries with `copy_cta_click`, `hl_ticket_click`, `share_x_click`, and `tax_sample_click`.
+- **Autopilot X/Reddit Engine (`ops/AUTOPILOT.md`, `scripts/generate-x-drafts.mjs`):**
+  - Chained `generate-x-drafts.mjs` into Autopilot Step 1 and sanitized `redditDraft` to remove multi-URL / `$7` pricing triggers.
+
 ## 2026-11-26 — v3.2.0 Non-Custodial Polymarket Whale Copy Drawer & Hyperliquid Funding Radar / ApproveBuilderFee
 - **Whale Copy Drawer (`public/builder-trade.js`, `public/client.js`, `public/index.html`):**
   - Added `Copy →` action next to `Audit Whale →` in the Whale Tape table backed by an in-memory trade array (no raw JSON in DOM attributes).

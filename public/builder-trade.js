@@ -3,6 +3,16 @@ const HL_EXCHANGE_URL = "https://api.hyperliquid.xyz/exchange";
 
 const $ = (id) => document.getElementById(id);
 
+function trackBuilderEvent(ev) {
+  const url = `/api/event?event=${encodeURIComponent(ev)}`;
+  try {
+    if (navigator.sendBeacon?.(url)) return;
+  } catch {
+    // Fallback to fetch keepalive below
+  }
+  fetch(url, { method: "POST", keepalive: true }).catch(() => {});
+}
+
 let connectedUser = null;
 let connectedChainIdHex = null;
 let activeWhaleTrade = null;
@@ -515,6 +525,8 @@ function initBuilderTradeUi() {
 
   $("hl-refresh-btn")?.addEventListener("click", () => window.loadHlTradeTab?.());
   $("hl-approve-btn")?.addEventListener("click", handleApproveBuilderFee);
+  $("cw-trade-cta")?.addEventListener("click", () => trackBuilderEvent("copy_cta_click"));
+  $("hl-ticket-link")?.addEventListener("click", () => trackBuilderEvent("hl_ticket_click"));
 
   if (window.ethereum?.on) {
     window.ethereum.on("accountsChanged", async (accounts) => {

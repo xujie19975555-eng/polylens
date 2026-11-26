@@ -90,6 +90,7 @@
             <p id="res-roast" class="roast-text">—</p>
             <div class="card-actions">
               <button id="download-card-btn" class="btn-secondary">Download PNG Card</button>
+              <button id="copy-card-btn" class="btn-ghost">Copy PNG</button>
               <button id="share-x-btn" class="btn-ghost">Share on X</button>
             </div>
           </div>
@@ -136,11 +137,19 @@
             <ul class="pro-list">
               <li>Reconstructs full chronological <code>BUY</code> / <code>SELL</code> / <code>REDEEM</code> / <code>REWARD</code> history (never zero-cost bugs)</li>
               <li>Preserves every deductible losing disposal with real Polygonscan <code>TxHash</code></li>
-              <li>Official Koinly CSV + Accountant Ledger + Printable PDF (full refund if Koinly import fails)</li>
+              <li>Koinly, IRS Form 8949, CoinLedger &amp; Awaken Tax CSVs + idempotent TxHash re-downloads (import issue? DM <a href="https://x.com/xujie19975555" target="_blank" rel="noopener">@xujie19975555</a> on X)</li>
             </ul>
+            <div id="pro-tax-preview" class="muted small mono" style="margin-top:8px;">Scanning 2026 FIFO events for this wallet…</div>
           </div>
           <div class="pro-right" style="display:flex; flex-direction:column; justify-content:center; gap:10px;">
             <a id="cta-tax-link" href="/tax-export" class="btn-primary full-width">Scan This Wallet's 2026 Tax Events (Free Preview) →</a>
+            <div class="small muted" style="display:flex; flex-wrap:wrap; gap:6px; justify-content:center;">
+              <span>Free samples:</span>
+              <a class="tax-sample-link" href="/api/tax-sample?format=koinly">Koinly</a> ·
+              <a class="tax-sample-link" href="/api/tax-sample?format=form8949">Form 8949</a> ·
+              <a class="tax-sample-link" href="/api/tax-sample?format=coinledger">CoinLedger</a> ·
+              <a class="tax-sample-link" href="/api/tax-sample?format=awaken">Awaken</a>
+            </div>
             <span class="muted small" style="text-align:center;">Non-custodial Base or Polygon USDC · No sign-up required</span>
           </div>
         </div>

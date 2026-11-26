@@ -146,13 +146,23 @@ export function readBotStoreStats(botDataDir) {
 }
 
 export function extractMetricsSummary(metricsPayload) {
+  const emptyDay = () => ({
+    wallet_audit: 0,
+    tax_preview: 0,
+    pay_click: 0,
+    tx_verified: 0,
+    copy_cta_click: 0,
+    hl_ticket_click: 0,
+    share_x_click: 0,
+    tax_sample_click: 0,
+  });
   if (!metricsPayload || typeof metricsPayload !== "object") {
     return {
       ok: false,
       backend: "unavailable",
       latestDate: null,
-      latestDay: { wallet_audit: 0, tax_preview: 0, pay_click: 0, tx_verified: 0 },
-      totals7d: { wallet_audit: 0, tax_preview: 0, pay_click: 0, tx_verified: 0 },
+      latestDay: emptyDay(),
+      totals7d: emptyDay(),
     };
   }
   const days = metricsPayload.days && typeof metricsPayload.days === "object" ? metricsPayload.days : {};
@@ -164,16 +174,19 @@ export function extractMetricsSummary(metricsPayload) {
         tax_preview: Number(days[latestDate]?.tax_preview || 0),
         pay_click: Number(days[latestDate]?.pay_click || 0),
         tx_verified: Number(days[latestDate]?.tx_verified || 0),
+        copy_cta_click: Number(days[latestDate]?.copy_cta_click || 0),
+        hl_ticket_click: Number(days[latestDate]?.hl_ticket_click || 0),
+        share_x_click: Number(days[latestDate]?.share_x_click || 0),
+        tax_sample_click: Number(days[latestDate]?.tax_sample_click || 0),
       }
-    : { wallet_audit: 0, tax_preview: 0, pay_click: 0, tx_verified: 0 };
+    : emptyDay();
 
-  const totals7d = { wallet_audit: 0, tax_preview: 0, pay_click: 0, tx_verified: 0 };
+  const totals7d = emptyDay();
   for (const d of sortedDates.slice(0, 7)) {
     const row = days[d] || {};
-    totals7d.wallet_audit += Number(row.wallet_audit || 0);
-    totals7d.tax_preview += Number(row.tax_preview || 0);
-    totals7d.pay_click += Number(row.pay_click || 0);
-    totals7d.tx_verified += Number(row.tx_verified || 0);
+    for (const k of Object.keys(totals7d)) {
+      totals7d[k] += Number(row[k] || 0);
+    }
   }
 
   return {
@@ -241,6 +254,7 @@ export function buildReviewMarkdown(report) {
   lines.push(`- **Backend:** \`${m.backend}\``);
   lines.push(`- **Latest Day (${m.latestDate || "n/a"}):** wallet_audit=${m.latestDay.wallet_audit}, tax_preview=${m.latestDay.tax_preview}, pay_click=${m.latestDay.pay_click}, tx_verified=${m.latestDay.tx_verified}`);
   lines.push(`- **7d Totals:** wallet_audit=${m.totals7d.wallet_audit}, tax_preview=${m.totals7d.tax_preview}, pay_click=${m.totals7d.pay_click}, tx_verified=${m.totals7d.tx_verified}`);
+  lines.push(`- **7d Demand-Gate & Viral Signals:** copy_cta_click=${m.totals7d.copy_cta_click}, hl_ticket_click=${m.totals7d.hl_ticket_click}, share_x_click=${m.totals7d.share_x_click}, tax_sample_click=${m.totals7d.tax_sample_click}`);
   lines.push("");
 
   lines.push("## Treasury 24h Delta");

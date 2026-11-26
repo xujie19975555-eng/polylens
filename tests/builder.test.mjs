@@ -398,3 +398,31 @@ test("api/router forwards req.body cleanly to handleApiRequest", async () => {
     assert.equal(JSON.parse(sentBody).error, "builder_unconfigured");
   }
 });
+
+test("/api/event records demand-gate metrics and ignores unknown event names", async () => {
+  const recorded = [];
+  const incrementMetric = async (ev) => recorded.push(ev);
+
+  for (const ev of ["copy_cta_click", "hl_ticket_click", "share_x_click", "tax_sample_click"]) {
+    const resp = await handleApiRequest({
+      pathname: "/api/event",
+      searchParams: new URLSearchParams(`event=${ev}`),
+      method: "POST",
+      deps: { incrementMetric },
+    });
+    assert.equal(resp.status, 200);
+  }
+  await handleApiRequest({
+    pathname: "/api/event",
+    searchParams: new URLSearchParams("event=bogus_unknown_event"),
+    method: "POST",
+    deps: { incrementMetric },
+  });
+
+  assert.deepEqual(recorded, [
+    "copy_cta_click",
+    "hl_ticket_click",
+    "share_x_click",
+    "tax_sample_click",
+  ]);
+});
