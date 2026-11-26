@@ -8,6 +8,8 @@ import {
 } from "./polymarket.js";
 import { fetchHyperliquidFunding } from "./hyperliquid.js";
 import {
+  buildAwakenCsv,
+  buildCoinLedgerCsv,
   buildFifoTaxReport,
   buildForm8949Csv,
   buildKoinlyCsv,
@@ -143,9 +145,10 @@ function buildTaxSampleCsv(format) {
   }
 
   const ledger = computeFifoTaxLedger(baseEvents, { year: "2026" });
-  return format === "form8949"
-    ? buildForm8949Csv(ledger.events)
-    : buildKoinlyCsv(ledger.events);
+  if (format === "form8949") return buildForm8949Csv(ledger.events);
+  if (format === "coinledger") return buildCoinLedgerCsv(ledger.events);
+  if (format === "awaken") return buildAwakenCsv(ledger.events);
+  return buildKoinlyCsv(ledger.events);
 }
 
 function jsonResp(status, data, extraHeaders = {}) {
@@ -216,14 +219,14 @@ export async function handleApiRequest({
             description: "Free /v2/activity FIFO taxable event count & direction preview",
           },
           {
-            path: "/api/tax-sample?format=koinly|form8949",
+            path: "/api/tax-sample?format=koinly|form8949|coinledger|awaken",
             priceUsdc: 0,
-            description: "Free deterministic 4-row sample CSV (Koinly or IRS Form 8949)",
+            description: "Free deterministic 4-row sample CSV (Koinly, IRS Form 8949, CoinLedger, or Awaken)",
           },
           {
             path: "/api/tax-export?address=0x...&year=2026&tx=0x...",
             priceUsdc: PRICING.taxExportUsdc,
-            description: "Full 2026 Polymarket FIFO Koinly CSV, IRS Form 8949 CSV & detailed accountant ledger (replay-protected)",
+            description: "Full 2026 Polymarket FIFO Koinly, IRS Form 8949, CoinLedger, Awaken & detailed accountant CSVs (replay-protected)",
           },
         ],
       });
@@ -280,7 +283,7 @@ export async function handleApiRequest({
 
     if (pathname === "/api/tax-sample") {
       const rawFormat = String(searchParams.get("format") || "koinly").trim().toLowerCase();
-      const format = rawFormat === "form8949" ? "form8949" : "koinly";
+      const format = ["form8949", "coinledger", "awaken"].includes(rawFormat) ? rawFormat : "koinly";
       const csv = buildTaxSampleCsv(format);
       return {
         status: 200,

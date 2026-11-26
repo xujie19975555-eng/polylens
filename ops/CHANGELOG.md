@@ -1,5 +1,10 @@
 # PolyLens Changelog
 
+## 2026-11-26 (Autopilot Iteration 1) — CoinLedger & Awaken Tax CSV Support
+- Added `buildCoinLedgerCsv` (Universal Manual Import CSV: `MM/DD/YYYY HH:MM:SS` UTC, `Income` vs `Investment Loss`, positive-only amounts, blank unused cells) and `buildAwakenCsv` (Awaken Perpetuals CSV: `close_position` / `funding_payment` tags preserving signed losses) in `src/core/tax-fifo.js`.
+- Exposed `coinledgerCsv` and `awakenCsv` in `buildFifoTaxReport(..., { full: true })` and `/api/tax-export`, plus `/api/tax-sample?format=coinledger|awaken` in `src/core/handlers.js`.
+- Added sample links and unlocked download buttons (`CoinLedger CSV`, `Awaken CSV`) in `public/tax-export.html` and `public/tax-export.js`, plus unit tests in `tests/v3-security-tax.test.mjs`.
+
 ## 2026-11-26 — v3.1 Tax Completeness, Free Samples & Daily Autopilot
 - **Tax Engine (`src/core/tax-fifo.js`, `src/core/handlers.js`):**
   - Preserved live-verified `buildKoinlyCsv` output (126/126 non-zero rows, 0 Koinly errors, 30 losses preserved).

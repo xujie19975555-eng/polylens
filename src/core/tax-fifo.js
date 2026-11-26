@@ -365,6 +365,94 @@ export function buildForm8949Csv(events) {
   return lines.join("\n");
 }
 
+function toUsUtcDateTime(koinlyDate) {
+  const m = String(koinlyDate || "").match(/^(\d{4})-(\d{2})-(\d{2}) (\d{2}:\d{2}:\d{2})$/);
+  if (!m) return String(koinlyDate || "");
+  return `${m[2]}/${m[3]}/${m[1]} ${m[4]}`;
+}
+
+export function buildCoinLedgerCsv(events) {
+  // CoinLedger Universal Manual Import template: positive-only numbers, blank unused side cells.
+  const headers = [
+    "Date (UTC)",
+    "Type",
+    "Received Currency",
+    "Received Amount",
+    "Sent Currency",
+    "Sent Amount",
+    "Fee Currency",
+    "Fee Amount",
+    "Exchange/Wallet",
+  ];
+  const lines = [headers.join(",")];
+  for (const ev of events || []) {
+    const rawPnl = Number(ev?.realizedPnlUsdc || 0);
+    if (!Number.isFinite(rawPnl) || Math.abs(rawPnl) < 0.005) continue; // Skip break-even 0.00 rows
+
+    const dt = toUsUtcDateTime(ev?.koinlyDate);
+    const absAmt = Math.abs(rawPnl).toFixed(2);
+    if (rawPnl > 0) {
+      lines.push(
+        [dt, "Income", "USDC", absAmt, "", "", "", "", "Polymarket"]
+          .map(csvEsc)
+          .join(",")
+      );
+    } else {
+      lines.push(
+        [dt, "Investment Loss", "", "", "USDC", absAmt, "", "", "Polymarket"]
+          .map(csvEsc)
+          .join(",")
+      );
+    }
+  }
+  return lines.join("\n");
+}
+
+export function buildAwakenCsv(events) {
+  // Awaken Tax Perpetuals/Futures CSV: Date in MM/DD/YYYY HH:MM:SS UTC, close_position / funding_payment tags.
+  const headers = [
+    "Date",
+    "Asset",
+    "Amount",
+    "Fee",
+    "P&L",
+    "Payment Token",
+    "Notes",
+    "Transaction Hash",
+    "Tag",
+  ];
+  const lines = [headers.join(",")];
+  for (const ev of events || []) {
+    const kind = String(ev?.kind || "").toUpperCase();
+    const isIncome = ORDINARY_INCOME_KINDS.has(kind);
+    const outcomeLabel = ev?.outcome && ev.outcome !== "-" ? ` (${ev.outcome})` : "";
+    const asset = `${ev?.title || "Polymarket Position"}${outcomeLabel}`;
+    const rawPnl = Number(ev?.realizedPnlUsdc || 0);
+    const pnl = Math.abs(rawPnl) < 0.005 ? 0 : rawPnl;
+    const rawShares = Number(ev?.shares || 0);
+    const amount = isIncome
+      ? Math.abs(pnl).toFixed(2)
+      : (rawShares > 0 ? rawShares.toFixed(4).replace(/\.?0+$/, "") : "1");
+    const notes = `${kind || "TRADE"}: ${asset}`;
+    lines.push(
+      [
+        toUsUtcDateTime(ev?.koinlyDate),
+        asset,
+        amount,
+        "0",
+        pnl.toFixed(2),
+        "USDC",
+        notes,
+        ev?.txHash || "",
+        isIncome ? "funding_payment" : "close_position",
+      ]
+        .map(csvEsc)
+        .join(",")
+    );
+  }
+  return lines.join("\n");
+}
+
 export async function buildFifoTaxReport(address, { year = "2026", full = false } = {}) {
   const inputAddr = String(address || "").trim().toLowerCase();
   const profile = await fetchJson(`${GAMMA_API}/public-profile?address=${inputAddr}`).catch(() => null);
@@ -440,5 +528,7 @@ export async function buildFifoTaxReport(address, { year = "2026", full = false 
     koinlyCsv: buildKoinlyCsv(ledger.events),
     detailedCsv: buildDetailedLedgerCsv(ledger.events),
     form8949Csv: buildForm8949Csv(ledger.events),
+    coinledgerCsv: buildCoinLedgerCsv(ledger.events),
+    awakenCsv: buildAwakenCsv(ledger.events),
   };
 }

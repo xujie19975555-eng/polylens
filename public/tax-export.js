@@ -154,6 +154,14 @@ function renderTax(data) {
     if (form8949Btn) {
       form8949Btn.classList.toggle("hidden", !data.form8949Csv);
     }
+    const coinledgerBtn = $("tax-download-coinledger-btn");
+    if (coinledgerBtn) {
+      coinledgerBtn.classList.toggle("hidden", !data.coinledgerCsv);
+    }
+    const awakenBtn = $("tax-download-awaken-btn");
+    if (awakenBtn) {
+      awakenBtn.classList.toggle("hidden", !data.awakenCsv);
+    }
     if (data.paymentVerified) {
       $("tax-tx-info").textContent = ` · Verified ${data.paymentVerified.amountUsdc} ${data.paymentVerified.tokenSymbol} on ${data.paymentVerified.chainName}`;
     }
@@ -305,6 +313,16 @@ $("tax-download-koinly-btn").addEventListener("click", () => {
 $("tax-download-form8949-btn")?.addEventListener("click", () => {
   if (!currentTax?.form8949Csv) return;
   downloadCsv(currentTax.form8949Csv, `polylens-form8949-${currentTax.year}-${currentTax.address.slice(0, 8)}.csv`);
+});
+
+$("tax-download-coinledger-btn")?.addEventListener("click", () => {
+  if (!currentTax?.coinledgerCsv) return;
+  downloadCsv(currentTax.coinledgerCsv, `polylens-coinledger-${currentTax.year}-${currentTax.address.slice(0, 8)}.csv`);
+});
+
+$("tax-download-awaken-btn")?.addEventListener("click", () => {
+  if (!currentTax?.awakenCsv) return;
+  downloadCsv(currentTax.awakenCsv, `polylens-awaken-${currentTax.year}-${currentTax.address.slice(0, 8)}.csv`);
 });
 
 $("tax-download-detail-btn").addEventListener("click", () => {

@@ -11,6 +11,8 @@ import {
   computeFifoTaxLedger,
   buildKoinlyCsv,
   buildForm8949Csv,
+  buildCoinLedgerCsv,
+  buildAwakenCsv,
   buildFifoTaxReport,
 } from "../src/core/tax-fifo.js";
 
@@ -381,6 +383,85 @@ test("buildFifoTaxReport full:true and /api/tax-export include form8949Csv along
     assert.equal(body.koinlyCsv, report.koinlyCsv);
     assert.equal(body.detailedCsv, report.detailedCsv);
     assert.equal(body.form8949Csv, report.form8949Csv);
+    assert.equal(body.coinledgerCsv, report.coinledgerCsv);
+    assert.equal(body.awakenCsv, report.awakenCsv);
+  } finally {
+    globalThis.fetch = prevFetch;
+  }
+});
+
+test("buildCoinLedgerCsv and buildAwakenCsv format exact headers, dates, gains/losses, and skip break-even for CoinLedger", () => {
+  const tBuy = Date.UTC(2026, 1, 10, 10, 0, 0) / 1000;
+  const tSell = Date.UTC(2026, 2, 15, 14, 5, 9) / 1000;
+  const tRedeem = Date.UTC(2026, 2, 20, 18, 30, 0) / 1000;
+
+  const ledger = computeFifoTaxLedger(
+    [
+      { type: "TRADE", side: "BUY", token_id: "W", size: 100, usdc_size: 40, timestamp: tBuy, transaction_hash: "0xw1", title: "Win Market", outcome: "Yes" },
+      { type: "TRADE", side: "SELL", token_id: "W", size: 100, usdc_size: 75, timestamp: tSell, transaction_hash: "0xw2", title: "Win Market", outcome: "Yes" },
+      { type: "TRADE", side: "BUY", token_id: "L", size: 200, usdc_size: 120.5, timestamp: tBuy, transaction_hash: "0xl1", title: "Loss Market", outcome: "No" },
+      { type: "REDEEM", token_id: "L", size: 200, usdc_size: 0, timestamp: tRedeem, transaction_hash: "0xl2", title: "Loss Market", outcome: "No" },
+      { type: "TRADE", side: "BUY", token_id: "EVEN", size: 10, usdc_size: 5, timestamp: tBuy, transaction_hash: "0xe1", title: "Even Market", outcome: "Yes" },
+      { type: "TRADE", side: "SELL", token_id: "EVEN", size: 10, usdc_size: 5, timestamp: tSell, transaction_hash: "0xe2", title: "Even Market", outcome: "Yes" },
+      { type: "REWARD", size: 12.5, usdc_size: 12.5, timestamp: tRedeem, transaction_hash: "0xr1", title: "Liquidity Reward" },
+    ],
+    { year: "2026" }
+  );
+
+  const clCsv = buildCoinLedgerCsv(ledger.events);
+  const clLines = clCsv.split("\n");
+  assert.equal(
+    clLines[0],
+    "Date (UTC),Type,Received Currency,Received Amount,Sent Currency,Sent Amount,Fee Currency,Fee Amount,Exchange/Wallet"
+  );
+  // Break-even 0.00 event skipped; 3 non-zero rows remain
+  assert.equal(clLines.length, 4);
+  assert.ok(clCsv.includes("03/20/2026 18:30:00,Income,USDC,12.50,,,,,Polymarket"));
+  assert.ok(clCsv.includes("03/20/2026 18:30:00,Investment Loss,,,USDC,120.50,,,Polymarket"));
+  assert.ok(clCsv.includes("03/15/2026 14:05:09,Income,USDC,35.00,,,,,Polymarket"));
+  assert.ok(!clCsv.includes(",-"));
+
+  const akCsv = buildAwakenCsv(ledger.events);
+  const akLines = akCsv.split("\n");
+  assert.equal(akLines[0], "Date,Asset,Amount,Fee,P&L,Payment Token,Notes,Transaction Hash,Tag");
+  // All 4 taxable events included (0.00 break-even allowed in Awaken close_position)
+  assert.equal(akLines.length, 5);
+  assert.ok(akCsv.includes("03/20/2026 18:30:00,Liquidity Reward,12.50,0,12.50,USDC,REWARD: Liquidity Reward,0xr1,funding_payment"));
+  assert.ok(akCsv.includes("03/20/2026 18:30:00,Loss Market (No),200,0,-120.50,USDC,REDEEM: Loss Market (No),0xl2,close_position"));
+  assert.ok(akCsv.includes("03/15/2026 14:05:09,Win Market (Yes),100,0,35.00,USDC,TRADE: Win Market (Yes),0xw2,close_position"));
+});
+
+test("/api/tax-sample returns coinledger and awaken CSV formats without network calls", async () => {
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("Network call forbidden in /api/tax-sample");
+  };
+
+  try {
+    const rCl = await handleApiRequest({
+      pathname: "/api/tax-sample",
+      searchParams: new URLSearchParams("format=coinledger"),
+      method: "GET",
+    });
+    assert.equal(rCl.status, 200);
+    assert.equal(rCl.headers["Content-Disposition"], 'attachment; filename="polylens-sample-coinledger.csv"');
+    const clLines = rCl.body.trim().split("\n");
+    assert.equal(clLines[0], "Date (UTC),Type,Received Currency,Received Amount,Sent Currency,Sent Amount,Fee Currency,Fee Amount,Exchange/Wallet");
+    assert.equal(clLines.length, 5);
+    assert.ok(rCl.body.includes("Investment Loss,,,USDC,120.50"));
+
+    const rAk = await handleApiRequest({
+      pathname: "/api/tax-sample",
+      searchParams: new URLSearchParams("format=awaken"),
+      method: "GET",
+    });
+    assert.equal(rAk.status, 200);
+    assert.equal(rAk.headers["Content-Disposition"], 'attachment; filename="polylens-sample-awaken.csv"');
+    const akLines = rAk.body.trim().split("\n");
+    assert.equal(akLines[0], "Date,Asset,Amount,Fee,P&L,Payment Token,Notes,Transaction Hash,Tag");
+    assert.equal(akLines.length, 5);
+    assert.ok(rAk.body.includes(",-120.50,USDC,"));
+    assert.ok(rAk.body.includes(",funding_payment"));
   } finally {
     globalThis.fetch = prevFetch;
   }

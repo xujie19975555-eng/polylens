@@ -86,7 +86,7 @@
       "id": "coinledger-awaken-csv",
       "title": "Add CoinLedger and Awaken Tax CSV export templates and sample formats",
       "priority": "P0",
-      "status": "ready",
+      "status": "done",
       "category": "product",
       "ownerFiles": [
         "src/core/tax-fifo.js",
