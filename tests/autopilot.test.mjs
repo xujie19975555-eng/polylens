@@ -31,6 +31,7 @@ import {
   countRepliesOnDate,
   hasPublishedOnDate,
   hasRepliedToStatus,
+  hasRepliedToTarget,
   pickDailyAngle,
   renderDraftsMarkdown,
 } from "../scripts/generate-x-drafts.mjs";
@@ -320,7 +321,7 @@ test("daily angle rotation, hl-poly-macro draft, and ops/published-log.json dedu
   assert.equal(hasPublishedOnDate(logData, "2099-01-01", "x"), false);
 });
 
-test("hasRepliedToStatus and countRepliesOnDate enforce x-reply deduplication and daily cap", () => {
+test("hasRepliedToStatus, hasRepliedToTarget, and countRepliesOnDate enforce x-reply and reddit-reply deduplication and caps", () => {
   const logData = {
     entries: [
       {
@@ -331,7 +332,13 @@ test("hasRepliedToStatus and countRepliesOnDate enforce x-reply deduplication an
       {
         date: "2026-11-27",
         channel: "x-reply",
+        topic: "wallet-pnl",
         targetStatusId: "2126000000000000001",
+      },
+      {
+        date: "2026-11-27",
+        channel: "reddit-reply",
+        targetPostId: "1abc2de",
       },
       {
         date: "2026-11-26",
@@ -342,13 +349,17 @@ test("hasRepliedToStatus and countRepliesOnDate enforce x-reply deduplication an
   };
 
   assert.equal(hasRepliedToStatus(logData, "2126000000000000001"), true);
-  assert.equal(hasRepliedToStatus(logData, " 2126000000000000001 "), true);
+  assert.equal(hasRepliedToTarget(logData, " 2126000000000000001 ", "x-reply"), true);
+  assert.equal(hasRepliedToTarget(logData, "2126000000000000001", "reddit-reply"), false);
+  assert.equal(hasRepliedToTarget(logData, "1abc2de", "reddit-reply"), true);
+  assert.equal(hasRepliedToTarget(logData, "1abc2de", "x-reply"), false);
   assert.equal(hasRepliedToStatus(logData, "2126201392314667141"), false);
   assert.equal(hasRepliedToStatus(logData, "9999999999999999999"), false);
-  assert.equal(hasRepliedToStatus(logData, ""), false);
-  assert.equal(hasRepliedToStatus(null, "2126000000000000001"), false);
+  assert.equal(hasRepliedToTarget(logData, ""), false);
+  assert.equal(hasRepliedToTarget(null, "2126000000000000001"), false);
 
-  assert.equal(countRepliesOnDate(logData, "2026-11-27"), 1);
+  assert.equal(countRepliesOnDate(logData, "2026-11-27", "x-reply"), 1);
+  assert.equal(countRepliesOnDate(logData, "2026-11-27", "reddit-reply"), 1);
   assert.equal(countRepliesOnDate(logData, "2026-11-26"), 1);
   assert.equal(countRepliesOnDate(logData, "2026-11-28"), 0);
   assert.equal(countRepliesOnDate(null, "2026-11-27"), 0);

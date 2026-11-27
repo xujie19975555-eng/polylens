@@ -1,5 +1,10 @@
 # PolyLens Changelog
 
+## 2026-11-27 (Dual-Track X PnL/Whale + Reddit Tax Q&A Interception) — Autopilot & Dedupe Expansion
+- Extended `hasRepliedToStatus` and added `hasRepliedToTarget` in `scripts/generate-x-drafts.mjs` to support both `targetStatusId` (`channel: "x-reply"`) and `targetPostId` (`channel: "reddit-reply"`), with expanded cross-channel unit tests in `tests/autopilot.test.mjs`.
+- Updated `ops/AUTOPILOT.md` Step 7 and `polylens-daily-autopilot/sidecar.json` (`args[4]`) to run dual-track Q&A interception: X (`@xujie19975555`, max 2/day combined across wallet/PnL/whale analytics + tax/Koinly/8949 Q&As) and Reddit (`u/HumorDisastrous1082` on `r/Polymarket` + `r/CryptoTax`, max 1/day).
+- Live dual-track scan results (`2026-11-27`): X Queries 1–3 (`pnl`/`win rate`/`track pnl`/`export csv`/`0x`) surfaced 0 genuine unpromoted human Q&As (`@forceblanche` paid promo, `@decenterghost`/`@FireBrightX` tool ads skipped); Reddit `r/Polymarket` search hit `You've been blocked by network security.` (`js_challenge=1` / `403`) on native Chrome's proxy IP — stopped without bypassing (`NEEDS_HUMAN`: user needs clean IP + `u/HumorDisastrous1082` login in native Chrome for unattended Reddit runs).
+
 ## 2026-11-27 (Targeted X Q&A Interception & Autopilot Integration) — Strict Max-2/Day Deduplicated Replies
 - Added `hasRepliedToStatus` and `countRepliesOnDate` deduplication/cap helpers to `scripts/generate-x-drafts.mjs` plus unit tests in `tests/autopilot.test.mjs`.
 - Updated `ops/AUTOPILOT.md` Step 7 and `polylens-daily-autopilot/sidecar.json` (`args[4]`) to include daily max-2 targeted X Q&A interception (`channel: "x-reply"`, single-paragraph reply + 1 free link, `targetStatusId` deduplication in `ops/published-log.json`, zero forced replies when no genuine tax/Koinly/8949 questions exist, and `NEEDS_HUMAN` stop on CAPTCHA/auth issues).

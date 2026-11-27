@@ -38,15 +38,19 @@ export function hasPublishedOnDate(logData, dateStr, channel = "x") {
   );
 }
 
-export function hasRepliedToStatus(logData, targetStatusId, channel = "x-reply") {
-  const normalizedId = String(targetStatusId || "").trim();
+export function hasRepliedToTarget(logData, targetId, channel = "x-reply") {
+  const normalizedId = String(targetId || "").trim();
   if (!normalizedId) return false;
   const entries = Array.isArray(logData?.entries) ? logData.entries : [];
   return entries.some(
     (entry) =>
       (entry?.channel || "x") === channel &&
-      String(entry?.targetStatusId || "").trim() === normalizedId
+      String(entry?.targetStatusId || entry?.targetPostId || "").trim() === normalizedId
   );
+}
+
+export function hasRepliedToStatus(logData, targetStatusId, channel = "x-reply") {
+  return hasRepliedToTarget(logData, targetStatusId, channel);
 }
 
 export function countRepliesOnDate(logData, dateStr, channel = "x-reply") {
