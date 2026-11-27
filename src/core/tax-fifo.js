@@ -1,3 +1,5 @@
+import { PRICING } from "./config.js";
+
 const DATA_API = "https://data-api.polymarket.com/v2";
 const GAMMA_API = "https://gamma-api.polymarket.com";
 
@@ -453,20 +455,91 @@ export function buildAwakenCsv(events) {
   return lines.join("\n");
 }
 
-export async function buildFifoTaxReport(address, { year = "2026", full = false } = {}) {
-  const inputAddr = String(address || "").trim().toLowerCase();
-  const profile = await fetchJson(`${GAMMA_API}/public-profile?address=${inputAddr}`).catch(() => null);
-  const cleanAddr = String(profile?.proxyWallet || inputAddr).toLowerCase();
+function normalizeAddressList(addressOrAddresses, maxWallets = PRICING.maxBundleWallets || 5) {
+  const rawList = Array.isArray(addressOrAddresses)
+    ? addressOrAddresses
+    : String(addressOrAddresses || "").split(",");
+  const unique = [];
+  const seen = new Set();
+  for (const item of rawList) {
+    const clean = String(item || "").trim().toLowerCase();
+    if (!clean || seen.has(clean)) continue;
+    seen.add(clean);
+    unique.push(clean);
+  }
+  if (unique.length > maxWallets) {
+    throw new Error(`Maximum ${maxWallets} wallet addresses allowed per tax bundle.`);
+  }
+  return unique;
+}
 
-  const { events: rawEvents, truncated } = await fetchAllActivity(cleanAddr, {
-    maxPages: full ? 25 : 15,
-  });
+export async function buildFifoTaxReport(addressOrAddresses, { year = "2026", full = false } = {}) {
+  const inputAddresses = normalizeAddressList(addressOrAddresses);
+  if (inputAddresses.length === 0) {
+    throw new Error("At least one valid wallet address is required.");
+  }
+
+  const profiles = await Promise.all(
+    inputAddresses.map((addr) =>
+      fetchJson(`${GAMMA_API}/public-profile?address=${addr}`).catch(() => null)
+    )
+  );
+
+  const resolvedAddresses = [];
+  const resolvedSet = new Set();
+  const walletLabels = [];
+  for (let i = 0; i < inputAddresses.length; i++) {
+    const inputAddr = inputAddresses[i];
+    const profile = profiles[i];
+    const proxyAddr = String(profile?.proxyWallet || inputAddr).toLowerCase();
+    if (!resolvedSet.has(proxyAddr)) {
+      resolvedSet.add(proxyAddr);
+      resolvedAddresses.push(proxyAddr);
+    }
+    walletLabels.push(
+      profile?.pseudonym ||
+        profile?.name ||
+        `${proxyAddr.slice(0, 6)}...${proxyAddr.slice(-4)}`
+    );
+  }
+
+  const activityResults = await Promise.all(
+    resolvedAddresses.map((proxyAddr) =>
+      fetchAllActivity(proxyAddr, { maxPages: full ? 25 : 15 })
+    )
+  );
+  const rawEvents = activityResults.flatMap((r) => r.events);
+  const truncated = activityResults.some((r) => r.truncated);
+
   const ledger = computeFifoTaxLedger(rawEvents, { year });
+  const cleanAddr = resolvedAddresses[0];
+  const inputAddress = inputAddresses.join(",");
+  const isBundle = inputAddresses.length > 1;
+  const priceUsdc = isBundle ? PRICING.taxBundleUsdc : PRICING.taxExportUsdc;
+  const displayName = isBundle
+    ? `${inputAddresses.length}-Wallet Bundle (${walletLabels[0]} + ${inputAddresses.length - 1} more)`
+    : walletLabels[0];
 
-  const displayName =
-    profile?.pseudonym ||
-    profile?.name ||
-    `${cleanAddr.slice(0, 6)}...${cleanAddr.slice(-4)}`;
+  const baseMeta = {
+    address: cleanAddr,
+    inputAddress,
+    addresses: resolvedAddresses,
+    inputAddresses,
+    walletCount: inputAddresses.length,
+    isBundle,
+    priceUsdc,
+    displayName,
+    year: ledger.year,
+    truncated,
+    totalActivityFetched: rawEvents.length,
+    disposalCount: ledger.disposalCount,
+    winCount: ledger.winCount,
+    lossCount: ledger.lossCount,
+    rewardCount: ledger.rewardCount,
+    totalEventsCount: ledger.totalEventsCount,
+    unknownTimestampCount: ledger.unknownTimestampCount,
+    unmatchedDisposalCount: ledger.unmatchedDisposalCount,
+  };
 
   if (!full) {
     const netDirection =
@@ -477,19 +550,7 @@ export async function buildFifoTaxReport(address, { year = "2026", full = false 
         : "EVEN";
     return {
       tier: "preview",
-      address: cleanAddr,
-      inputAddress: inputAddr,
-      displayName,
-      year: ledger.year,
-      truncated,
-      totalActivityFetched: rawEvents.length,
-      disposalCount: ledger.disposalCount,
-      winCount: ledger.winCount,
-      lossCount: ledger.lossCount,
-      rewardCount: ledger.rewardCount,
-      totalEventsCount: ledger.totalEventsCount,
-      unknownTimestampCount: ledger.unknownTimestampCount,
-      unmatchedDisposalCount: ledger.unmatchedDisposalCount,
+      ...baseMeta,
       netDirection,
       hasLosses: ledger.lossCount > 0,
       lockedRows: Math.max(0, ledger.totalEventsCount - 3),
@@ -506,19 +567,7 @@ export async function buildFifoTaxReport(address, { year = "2026", full = false 
 
   return {
     tier: "pro_tax",
-    address: cleanAddr,
-    inputAddress: inputAddr,
-    displayName,
-    year: ledger.year,
-    truncated,
-    totalActivityFetched: rawEvents.length,
-    disposalCount: ledger.disposalCount,
-    winCount: ledger.winCount,
-    lossCount: ledger.lossCount,
-    rewardCount: ledger.rewardCount,
-    totalEventsCount: ledger.totalEventsCount,
-    unknownTimestampCount: ledger.unknownTimestampCount,
-    unmatchedDisposalCount: ledger.unmatchedDisposalCount,
+    ...baseMeta,
     grossGainsUsdc: ledger.grossGainsUsdc,
     grossLossesUsdc: ledger.grossLossesUsdc,
     netRealizedUsdc: ledger.netRealizedUsdc,

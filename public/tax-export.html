@@ -42,7 +42,7 @@
       </p>
 
       <form id="tax-form" class="search-box">
-        <input id="tax-wallet" type="text" placeholder="Paste Polymarket EOA or proxy wallet (0x...)" spellcheck="false" />
+        <input id="tax-wallet" type="text" placeholder="Paste 1 wallet or up to 5 comma-separated wallets (0x..., 0x...)" spellcheck="false" />
         <select id="tax-year" style="background:var(--surface-2); color:var(--text); border:1px solid var(--border); border-radius:8px; padding:0 12px; font-weight:600;">
           <option value="2026" selected>2026</option>
           <option value="2025">2025</option>
@@ -53,6 +53,7 @@
       <div class="whale-row">
         <span class="whale-label">Try sample trader:</span>
         <button type="button" class="chip" id="sample-tax-btn">ukowna (0x8fbc...5c63)</button>
+        <span class="small muted">Single wallet: 7 USDC · Multi-wallet bundle (2–5 EOA/proxy): 15 USDC</span>
       </div>
       <div id="tax-error" class="error-banner hidden"></div>
     </div>
@@ -150,7 +151,7 @@
       <div id="tax-paywall" class="card pro-card">
         <div class="pro-left">
           <div class="pro-eyebrow">ONE-TIME UNLOCK · BOUND TO YOUR WALLET · ANTI-REPLAY PROTECTED</div>
-          <h2>Unlock Full FIFO Numbers &amp; Tax CSVs — <span class="accent">7 USDC</span></h2>
+          <h2>Unlock Full FIFO Numbers &amp; Tax CSVs — <span id="tax-price-label" class="accent">7 USDC</span></h2>
           <ul class="pro-list">
             <li>Exact <strong>Gross Gains, Deductible Losses &amp; Net Realized PnL</strong> (<span id="t-locked-note">locked rows</span>)</li>
             <li><strong>Koinly CSV</strong> using official <code>Koinly Date, Amount, Currency, Label (realized gain)</code> format so losses offset gains</li>
@@ -159,7 +160,7 @@
             <li><strong>Full Accountant CSV</strong> with Shares, FIFO Cost Basis, Proceeds, Realized PnL &amp; Polygonscan TxHashes</li>
           </ul>
           <p class="muted small" style="margin-top:10px;">
-            Informational crypto ledger only — not formal tax advice. <strong>Full 7 USDC refund</strong> if your CSV fails to import into Koinly.
+            Informational crypto ledger only — not formal tax advice. <strong>Full refund</strong> if your CSV fails to import into Koinly.
           </p>
         </div>
         <div class="pro-right">
@@ -169,7 +170,7 @@
             <button type="button" class="chain-btn" data-chain="polygon_e">Polygon USDC.e</button>
           </div>
           <button id="tax-wallet-pay-btn" class="btn-primary full-width">Pay 7 USDC with Browser Wallet</button>
-          <div class="divider"><span>or send 7 USDC manually &amp; paste tx hash</span></div>
+          <div class="divider"><span id="tax-manual-divider">or send 7 USDC manually &amp; paste tx hash</span></div>
           <div class="copy-row">
             <code>0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6</code>
             <button type="button" id="tax-copy-btn" class="btn-mini">Copy</button>

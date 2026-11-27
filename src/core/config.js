@@ -6,6 +6,9 @@ export const PRICING = {
   proReportAtomic: 3_000_000n,
   taxExportUsdc: 7,
   taxExportAtomic: 7_000_000n,
+  taxBundleUsdc: 15,
+  taxBundleAtomic: 15_000_000n,
+  maxBundleWallets: 5,
   x402CallUsdc: 0.05,
   x402CallAtomic: 50_000n,
 };

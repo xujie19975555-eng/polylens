@@ -466,3 +466,153 @@ test("/api/tax-sample returns coinledger and awaken CSV formats without network 
     globalThis.fetch = prevFetch;
   }
 });
+
+test("buildFifoTaxReport merges chronological FIFO lots across multiple wallets and deduplicates shared proxyWallet", async () => {
+  const prevFetch = globalThis.fetch;
+  const w1 = "0x1111111111111111111111111111111111111111";
+  const w2 = "0x2222222222222222222222222222222222222222";
+  const w3 = "0x3333333333333333333333333333333333333333";
+  const tBuy = Date.UTC(2026, 0, 10, 12, 0, 0) / 1000;
+  const tSell = Date.UTC(2026, 2, 15, 12, 0, 0) / 1000;
+  let activityFetches = 0;
+
+  globalThis.fetch = async (url) => {
+    const u = String(url);
+    if (u.includes("/public-profile")) {
+      if (u.includes(w1)) return { ok: true, json: async () => ({ proxyWallet: w1, pseudonym: "alpha" }) };
+      if (u.includes(w2)) return { ok: true, json: async () => ({ proxyWallet: w2, pseudonym: "beta" }) };
+      // w3 resolves to w1's proxyWallet -> must deduplicate activity fetch!
+      return { ok: true, json: async () => ({ proxyWallet: w1, pseudonym: "alpha-eoa" }) };
+    }
+    activityFetches += 1;
+    if (u.includes(`user=${w1}`)) {
+      return {
+        ok: true,
+        json: async () => ({
+          data: [
+            { type: "TRADE", side: "BUY", token_id: "CROSS_TOK", size: 100, usdc_size: 40, timestamp: tBuy, transaction_hash: "0xbuy_w1", title: "Cross Wallet Market", outcome: "Yes" },
+          ],
+          pagination: { next_cursor: "", has_more: false },
+        }),
+      };
+    }
+    return {
+      ok: true,
+      json: async () => ({
+        data: [
+          { type: "TRADE", side: "SELL", token_id: "CROSS_TOK", size: 100, usdc_size: 85, timestamp: tSell, transaction_hash: "0xsell_w2", title: "Cross Wallet Market", outcome: "Yes" },
+        ],
+        pagination: { next_cursor: "", has_more: false },
+      }),
+    };
+  };
+
+  try {
+    const report = await buildFifoTaxReport(`${w1},${w2},${w3}`, { year: "2026", full: true });
+    assert.equal(activityFetches, 2); // w1 and w2 only (w3 shared proxyWallet w1)
+    assert.equal(report.walletCount, 3);
+    assert.equal(report.isBundle, true);
+    assert.equal(report.priceUsdc, 15);
+    assert.deepEqual(report.addresses, [w1, w2]);
+    assert.equal(report.unmatchedDisposalCount, 0);
+    assert.equal(report.grossGainsUsdc, 45);
+    assert.equal(report.netTotalUsdc, 45);
+    assert.equal(report.events[0].acquiredDate, "2026-01-10");
+    assert.equal(report.events[0].soldDate, "2026-03-15");
+    assert.ok(report.form8949Csv.includes(",2026-01-10,2026-03-15,85.00,40.00,,0.00,45.00,Short-Term,0xsell_w2"));
+  } finally {
+    globalThis.fetch = prevFetch;
+  }
+});
+
+test("/api/tax-preview and /api/tax-export enforce max 5 wallets, 15 USDC bundle pricing, and order-independent anti-replay", async () => {
+  const w1 = "0x1111111111111111111111111111111111111111";
+  const w2 = "0x2222222222222222222222222222222222222222";
+  const w3 = "0x3333333333333333333333333333333333333333";
+  const w4 = "0x4444444444444444444444444444444444444444";
+  const w5 = "0x5555555555555555555555555555555555555555";
+  const w6 = "0x6666666666666666666666666666666666666666";
+
+  // Reject >5 wallets on preview
+  const tooMany = await handleApiRequest({
+    pathname: "/api/tax-preview",
+    searchParams: new URLSearchParams(`address=${[w1, w2, w3, w4, w5, w6].join(",")}`),
+    method: "GET",
+  });
+  assert.equal(tooMany.status, 400);
+  assert.equal(JSON.parse(tooMany.body).error, "too_many_wallets");
+
+  // Reject malformed address inside comma-separated list
+  const badOne = await handleApiRequest({
+    pathname: "/api/tax-preview",
+    searchParams: new URLSearchParams(`address=${w1},0xbad`),
+    method: "GET",
+  });
+  assert.equal(badOne.status, 400);
+  assert.equal(JSON.parse(badOne.body).error, "invalid_address");
+
+  // Unpaid bundle quotes 15 USDC
+  const unpaidBundle = await handleApiRequest({
+    pathname: "/api/tax-export",
+    searchParams: new URLSearchParams(`address=${w1},${w2}&year=2026`),
+    method: "GET",
+  });
+  assert.equal(unpaidBundle.status, 402);
+  const unpaidJson = JSON.parse(unpaidBundle.body);
+  assert.equal(unpaidJson.priceUsdc, 15);
+  assert.equal(unpaidJson.accepts[0].maxAmountRequired, "15000000");
+
+  // Paid bundle verifies minAmountAtomic=15_000_000n, allows order-independent retry, blocks different wallet set
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), "polylens-bundle-replay-"));
+  const storePath = path.join(dir, "replay.json");
+  const tx = "0x" + "9".repeat(64);
+  let capturedMinAtomic = null;
+  const mockDeps = {
+    verifyUsdcPayment: async ({ minAmountAtomic }) => {
+      capturedMinAtomic = minAmountAtomic;
+      return { ok: true, chain: "base", chainName: "Base", amountUsdc: 15, tokenSymbol: "USDC" };
+    },
+    claimTxHash: (opts) => claimTxHash({ ...opts, localStorePath: storePath }),
+    buildFifoTaxReport: async (addrs, opts) => ({
+      tier: "pro_tax",
+      address: Array.isArray(addrs) ? addrs[0] : addrs,
+      addresses: Array.isArray(addrs) ? addrs : [addrs],
+      year: opts.year,
+      events: [],
+      koinlyCsv: "",
+      detailedCsv: "",
+      form8949Csv: "",
+    }),
+    incrementMetric: async () => {},
+  };
+
+  const r1 = await handleApiRequest({
+    pathname: "/api/tax-export",
+    searchParams: new URLSearchParams(`address=${w1},${w2}&year=2026&tx=${tx}`),
+    method: "GET",
+    deps: mockDeps,
+  });
+  assert.equal(r1.status, 200);
+  assert.equal(capturedMinAtomic, 15_000_000n);
+  assert.equal(JSON.parse(r1.body).walletCount, 2);
+
+  // Order-independent retry (w2,w1) is idempotent
+  const r2 = await handleApiRequest({
+    pathname: "/api/tax-export",
+    searchParams: new URLSearchParams(`address=${w2},${w1}&year=2026&tx=${tx}`),
+    method: "GET",
+    deps: mockDeps,
+  });
+  assert.equal(r2.status, 200);
+  assert.equal(JSON.parse(r2.body).idempotent, true);
+
+  // Different wallet set (w1,w3) is blocked with 402 tx_already_used
+  const r3 = await handleApiRequest({
+    pathname: "/api/tax-export",
+    searchParams: new URLSearchParams(`address=${w1},${w3}&year=2026&tx=${tx}`),
+    method: "GET",
+    deps: mockDeps,
+  });
+  assert.equal(r3.status, 402);
+  assert.equal(JSON.parse(r3.body).error, "tx_already_used");
+});

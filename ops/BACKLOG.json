@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "updatedAt": "2026-11-26",
+  "updatedAt": "2026-11-27",
   "northStar": "Reach $100-$1,000+ monthly USDC revenue via 7 USDC Polymarket 2026 Tax CSV exports & SEO/distribution compounding",
   "items": [
     {
@@ -134,7 +134,7 @@
       "id": "multi-wallet-bundle-export",
       "title": "Add multi-wallet bundle FIFO tax export (up to 5 proxy/EOA addresses)",
       "priority": "P1",
-      "status": "ready",
+      "status": "done",
       "category": "product",
       "ownerFiles": [
         "src/core/tax-fifo.js",
@@ -234,6 +234,22 @@
       ],
       "acceptanceCriteria": "Expose read-only preview_polymarket_tax_events tool calling /api/tax-preview so MCP AI agents route Polymarket tax queries directly to /tax-export.",
       "revenueHypothesis": "Turns MCP tool invocations from coding/crypto agents into high-intent 7 USDC tax export traffic."
+    },
+    {
+      "id": "turbotax-txf-export",
+      "title": "Add TurboTax Desktop TXF (Tax Exchange Format) export alongside CSVs",
+      "priority": "P2",
+      "status": "ready",
+      "category": "product",
+      "ownerFiles": [
+        "src/core/tax-fifo.js",
+        "src/core/handlers.js",
+        "public/tax-export.html",
+        "public/tax-export.js",
+        "tests/v3-security-tax.test.mjs"
+      ],
+      "acceptanceCriteria": "Export buildTurboTaxTxf in src/core/tax-fifo.js emitting valid V042 TXF capital-gain/loss records (codes 321/323/711/713), expose txfExport in /api/tax-export and UI download button.",
+      "revenueHypothesis": "Removes manual CSV-to-TurboTax conversion for US retail filers using TurboTax Desktop."
     },
     {
       "id": "custom-domain-dns-setup",

@@ -26,6 +26,46 @@ import {
   incrementMetric,
 } from "./replay-store.js";
 
+function parseTaxWallets(rawAddress, maxWallets = PRICING.maxBundleWallets || 5) {
+  const parts = String(rawAddress || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length === 0) {
+    return {
+      ok: false,
+      error: "invalid_address",
+      message: "Please enter a valid 42-character 0x EVM wallet address.",
+    };
+  }
+  for (const addr of parts) {
+    if (!isValidEvmAddress(addr)) {
+      return {
+        ok: false,
+        error: "invalid_address",
+        message: "Please enter valid 42-character 0x EVM wallet address(es), comma-separated (max 5).",
+      };
+    }
+  }
+  const unique = [];
+  const seen = new Set();
+  for (const addr of parts) {
+    const lower = addr.toLowerCase();
+    if (!seen.has(lower)) {
+      seen.add(lower);
+      unique.push(lower);
+    }
+  }
+  if (unique.length > maxWallets) {
+    return {
+      ok: false,
+      error: "too_many_wallets",
+      message: `Maximum ${maxWallets} wallet addresses allowed per bundle export.`,
+    };
+  }
+  return { ok: true, addresses: unique };
+}
+
 function buildTaxSampleCsv(format) {
   // Deterministic synthetic Polymarket events (zero network calls) run through the real FIFO ledger
   const baseEvents = [
@@ -225,7 +265,7 @@ export async function handleApiRequest({
           {
             path: "/api/tax-preview?address=0x...&year=2026",
             priceUsdc: 0,
-            description: "Free /v2/activity FIFO taxable event count & direction preview",
+            description: "Free /v2/activity FIFO taxable event count & direction preview (1–5 comma-separated wallets)",
           },
           {
             path: "/api/tax-sample?format=koinly|form8949|coinledger|awaken",
@@ -235,7 +275,9 @@ export async function handleApiRequest({
           {
             path: "/api/tax-export?address=0x...&year=2026&tx=0x...",
             priceUsdc: PRICING.taxExportUsdc,
-            description: "Full 2026 Polymarket FIFO Koinly, IRS Form 8949, CoinLedger, Awaken & detailed accountant CSVs (replay-protected)",
+            bundlePriceUsdc: PRICING.taxBundleUsdc,
+            maxBundleWallets: PRICING.maxBundleWallets,
+            description: "Full 2026 Polymarket FIFO Koinly, IRS Form 8949, CoinLedger, Awaken & detailed accountant CSVs (7 USDC single / 15 USDC up to 5 wallets, replay-protected)",
           },
         ],
       });
@@ -317,28 +359,42 @@ export async function handleApiRequest({
     }
 
     if (pathname === "/api/tax-preview") {
-      const address = searchParams.get("address") || "";
-      if (!isValidEvmAddress(address)) {
+      const parsed = parseTaxWallets(searchParams.get("address") || "");
+      if (!parsed.ok) {
         return jsonResp(400, {
-          error: "invalid_address",
-          message: "Please enter a valid 42-character 0x EVM wallet address.",
+          error: parsed.error,
+          message: parsed.message,
         });
       }
       const year = searchParams.get("year") || "2026";
-      const report = await taxFn(address, { year, full: false });
+      const isBundle = parsed.addresses.length > 1;
+      const targetArg = isBundle ? parsed.addresses : parsed.addresses[0];
+      const report = await taxFn(targetArg, { year, full: false });
       await metricFn("tax_preview");
-      return jsonResp(200, report, { "Cache-Control": "public, max-age=30" });
+      return jsonResp(
+        200,
+        {
+          walletCount: parsed.addresses.length,
+          isBundle,
+          priceUsdc: isBundle ? PRICING.taxBundleUsdc : PRICING.taxExportUsdc,
+          ...report,
+        },
+        { "Cache-Control": "public, max-age=30" }
+      );
     }
 
     if (pathname === "/api/tax-export") {
-      const address = searchParams.get("address") || "";
-      if (!isValidEvmAddress(address)) {
+      const parsed = parseTaxWallets(searchParams.get("address") || "");
+      if (!parsed.ok) {
         return jsonResp(400, {
-          error: "invalid_address",
-          message: "Provide a valid 0x EVM wallet address via ?address=0x...",
+          error: parsed.error,
+          message: parsed.message,
         });
       }
       const year = searchParams.get("year") || "2026";
+      const isBundle = parsed.addresses.length > 1;
+      const priceUsdc = isBundle ? PRICING.taxBundleUsdc : PRICING.taxExportUsdc;
+      const priceAtomic = isBundle ? PRICING.taxBundleAtomic : PRICING.taxExportAtomic;
       const txHash = searchParams.get("tx") || getHeader("x-payment-tx") || "";
       const chain = searchParams.get("chain") || getHeader("x-payment-chain") || "auto";
 
@@ -347,9 +403,11 @@ export async function handleApiRequest({
           402,
           buildPaymentRequiredResponse({
             resource: "/api/tax-export",
-            description: `Full ${year} Polymarket FIFO Koinly CSV & detailed accountant ledger`,
-            priceUsdc: PRICING.taxExportUsdc,
-            priceAtomic: PRICING.taxExportAtomic,
+            description: isBundle
+              ? `Full ${year} Polymarket Multi-Wallet Bundle (${parsed.addresses.length} wallets) FIFO Tax CSVs`
+              : `Full ${year} Polymarket FIFO Koinly CSV & detailed accountant ledger`,
+            priceUsdc,
+            priceAtomic,
           })
         );
       }
@@ -357,7 +415,7 @@ export async function handleApiRequest({
       const verification = await verifyFn({
         txHash,
         chain,
-        minAmountAtomic: PRICING.taxExportAtomic,
+        minAmountAtomic: priceAtomic,
         maxAgeSeconds: 30 * 24 * 3600,
       });
       if (!verification.ok) {
@@ -365,14 +423,15 @@ export async function handleApiRequest({
           ...buildPaymentRequiredResponse({
             resource: "/api/tax-export",
             description: "Payment verification failed.",
-            priceUsdc: PRICING.taxExportUsdc,
-            priceAtomic: PRICING.taxExportAtomic,
+            priceUsdc,
+            priceAtomic,
           }),
           verification,
         });
       }
 
-      const scopeKey = `tax-export:${address.trim().toLowerCase()}:${String(year).trim().toLowerCase()}`;
+      const sortedWallets = [...parsed.addresses].sort().join(",");
+      const scopeKey = `tax-export:${sortedWallets}:${String(year).trim().toLowerCase()}`;
       const claim = await claimFn({ txHash, scopeKey });
       if (!claim.ok) {
         if (claim.reason === "payment_store_unconfigured") {
@@ -385,8 +444,8 @@ export async function handleApiRequest({
           ...buildPaymentRequiredResponse({
             resource: "/api/tax-export",
             description: "Transaction hash already redeemed.",
-            priceUsdc: PRICING.taxExportUsdc,
-            priceAtomic: PRICING.taxExportAtomic,
+            priceUsdc,
+            priceAtomic,
           }),
           error: "tx_already_used",
           verification: {
@@ -400,10 +459,14 @@ export async function handleApiRequest({
       if (!claim.idempotent) {
         await metricFn("tx_verified");
       }
-      const report = await taxFn(address, { year, full: true });
+      const targetArg = isBundle ? parsed.addresses : parsed.addresses[0];
+      const report = await taxFn(targetArg, { year, full: true });
       return jsonResp(200, {
         paymentVerified: verification,
         idempotent: claim.idempotent,
+        walletCount: parsed.addresses.length,
+        isBundle,
+        priceUsdc,
         ...report,
       });
     }

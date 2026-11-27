@@ -1,5 +1,7 @@
 const TREASURY = "0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6";
-const TAX_AMOUNT_ATOMIC = 7_000_000n;
+const SINGLE_TAX_USDC = 7;
+const BUNDLE_TAX_USDC = 15;
+const MAX_BUNDLE_WALLETS = 5;
 
 const PAYMENT_OPTIONS = {
   base: {
@@ -67,14 +69,49 @@ document.querySelectorAll(".chain-btn").forEach((btn) => {
   });
 });
 
+function parseWalletInput(rawInput) {
+  const parts = String(rawInput || "")
+    .split(",")
+    .map((s) => s.trim())
+    .filter(Boolean);
+  if (parts.length === 0) {
+    return { ok: false, message: "Please enter a valid 42-character 0x EVM address." };
+  }
+  for (const addr of parts) {
+    if (!/^0x[0-9a-fA-F]{40}$/.test(addr)) {
+      return { ok: false, message: `Invalid 0x EVM address: ${addr}` };
+    }
+  }
+  const unique = [];
+  const seen = new Set();
+  for (const addr of parts) {
+    const lower = addr.toLowerCase();
+    if (!seen.has(lower)) {
+      seen.add(lower);
+      unique.push(lower);
+    }
+  }
+  if (unique.length > MAX_BUNDLE_WALLETS) {
+    return { ok: false, message: `Maximum ${MAX_BUNDLE_WALLETS} wallet addresses allowed per bundle.` };
+  }
+  return { ok: true, addresses: unique };
+}
+
+function getRequiredPriceUsdc(data) {
+  if (Number(data?.priceUsdc) > 0) return Number(data.priceUsdc);
+  const count = Number(data?.walletCount || data?.inputAddresses?.length || 1);
+  return count > 1 ? BUNDLE_TAX_USDC : SINGLE_TAX_USDC;
+}
+
 async function runTaxPreview(address, year) {
-  const clean = (address || "").trim();
+  const parsed = parseWalletInput(address);
   $("tax-error").classList.add("hidden");
-  if (!/^0x[0-9a-fA-F]{40}$/.test(clean)) {
-    $("tax-error").textContent = "Please enter a valid 42-character 0x EVM address.";
+  if (!parsed.ok) {
+    $("tax-error").textContent = parsed.message;
     $("tax-error").classList.remove("hidden");
     return;
   }
+  const clean = parsed.addresses.join(",");
   $("tax-loading").classList.remove("hidden");
   $("tax-results").classList.add("hidden");
   $("tax-btn").disabled = true;
@@ -96,6 +133,11 @@ async function runTaxPreview(address, year) {
 
 function renderTax(data) {
   const isPro = data.tier === "pro_tax";
+  const walletCount = Number(data.walletCount || data.inputAddresses?.length || 1);
+  const isBundle = walletCount > 1;
+  const priceUsdc = getRequiredPriceUsdc(data);
+  const walletLabel = isBundle ? `${walletCount} wallets merged · ` : "";
+
   $("tax-results").classList.remove("hidden");
   $("t-year-lbl").textContent = String(data.year).toUpperCase();
 
@@ -130,17 +172,25 @@ function renderTax(data) {
     $("t-gains").className = "kpi-value pos";
     $("t-losses").textContent = `Losses: -${fmtUsd(data.grossLossesUsdc)}`;
     $("t-rewards").textContent = fmtUsd(data.rewardsIncomeUsdc);
-    $("t-meta").textContent = `${data.totalActivityFetched} activity events scanned`;
+    $("t-meta").textContent = `${walletLabel}${data.totalActivityFetched} activity events scanned`;
   } else {
     const netEl = $("t-net");
     netEl.textContent = data.netDirection === "NET_PROFIT" ? "Net Profit 🔒" : data.netDirection === "NET_LOSS" ? "Net Loss 🔒" : "Even 🔒";
     netEl.className = `kpi-value ${data.netDirection === "NET_PROFIT" ? "pos" : data.netDirection === "NET_LOSS" ? "neg" : ""}`;
-    $("t-direction").textContent = "Exact amount unlocked with 7 USDC";
+    $("t-direction").textContent = `Exact amount unlocked with ${priceUsdc} USDC`;
     $("t-gains").textContent = "Locked 🔒";
     $("t-gains").className = "kpi-value";
     $("t-losses").textContent = data.hasLosses ? "Deductible losses detected" : "0 losing disposals";
     $("t-rewards").textContent = `${data.rewardCount} events`;
-    $("t-meta").textContent = `${data.totalActivityFetched} activity events scanned`;
+    $("t-meta").textContent = `${walletLabel}${data.totalActivityFetched} activity events scanned`;
+  }
+
+  if ($("tax-price-label")) {
+    $("tax-price-label").textContent = `${priceUsdc} USDC${isBundle ? ` (${walletCount}-Wallet Bundle)` : ""}`;
+  }
+  $("tax-wallet-pay-btn").textContent = `Pay ${priceUsdc} USDC with Browser Wallet`;
+  if ($("tax-manual-divider")) {
+    $("tax-manual-divider").textContent = `or send ${priceUsdc} USDC manually & paste tx hash`;
   }
 
   const pill = $("tax-tier-pill");
@@ -216,11 +266,12 @@ function encodeErc20Transfer(toAddr, amountAtomic) {
 async function verifyTaxTx(txHash, chain = "auto", silent = false) {
   if (!currentTax) return false;
   const cleanTx = (txHash || "").trim();
+  const requiredUsdc = getRequiredPriceUsdc(currentTax);
   if (!/^0x[0-9a-fA-F]{64}$/.test(cleanTx)) {
     setStatus("Enter a valid 66-character 0x transaction hash.", "err");
     return false;
   }
-  if (!silent) setStatus("Verifying 7 USDC transfer (requires >=2 confirmations)...");
+  if (!silent) setStatus(`Verifying ${requiredUsdc} USDC transfer (requires >=2 confirmations)...`);
   const res = await fetch(
     `/api/tax-export?address=${encodeURIComponent(currentTax.inputAddress || currentTax.address)}&year=${encodeURIComponent(currentTax.year)}&tx=${encodeURIComponent(cleanTx)}&chain=${encodeURIComponent(chain)}`
   );
@@ -238,8 +289,10 @@ async function verifyTaxTx(txHash, chain = "auto", silent = false) {
 $("tax-wallet-pay-btn").addEventListener("click", async () => {
   if (!currentTax) return;
   trackEvent("pay_click");
+  const requiredUsdc = getRequiredPriceUsdc(currentTax);
+  const requiredAtomic = BigInt(Math.round(requiredUsdc * 1_000_000));
   if (!window.ethereum) {
-    setStatus("No browser wallet detected. Send 7 USDC manually and paste the tx hash below.", "err");
+    setStatus(`No browser wallet detected. Send ${requiredUsdc} USDC manually and paste the tx hash below.`, "err");
     return;
   }
   const opt = PAYMENT_OPTIONS[selectedChain];
@@ -266,10 +319,10 @@ $("tax-wallet-pay-btn").addEventListener("click", async () => {
         throw switchErr;
       }
     }
-    setStatus(`Confirm 7 ${opt.symbol} transfer in your wallet...`);
+    setStatus(`Confirm ${requiredUsdc} ${opt.symbol} transfer in your wallet...`);
     const txHash = await window.ethereum.request({
       method: "eth_sendTransaction",
-      params: [{ from, to: opt.tokenAddress, data: encodeErc20Transfer(TREASURY, TAX_AMOUNT_ATOMIC) }],
+      params: [{ from, to: opt.tokenAddress, data: encodeErc20Transfer(TREASURY, requiredAtomic) }],
     });
     $("tax-tx-input").value = txHash;
     setStatus(`Tx sent (${txHash.slice(0, 10)}...). Waiting for >=2 confirmations...`);
@@ -305,29 +358,34 @@ function downloadCsv(csvText, filename) {
   URL.revokeObjectURL(url);
 }
 
+function csvSuffix() {
+  const count = Number(currentTax?.walletCount || currentTax?.inputAddresses?.length || 1);
+  return count > 1 ? `bundle-${count}w` : currentTax.address.slice(0, 8);
+}
+
 $("tax-download-koinly-btn").addEventListener("click", () => {
   if (!currentTax?.koinlyCsv) return;
-  downloadCsv(currentTax.koinlyCsv, `polylens-koinly-${currentTax.year}-${currentTax.address.slice(0, 8)}.csv`);
+  downloadCsv(currentTax.koinlyCsv, `polylens-koinly-${currentTax.year}-${csvSuffix()}.csv`);
 });
 
 $("tax-download-form8949-btn")?.addEventListener("click", () => {
   if (!currentTax?.form8949Csv) return;
-  downloadCsv(currentTax.form8949Csv, `polylens-form8949-${currentTax.year}-${currentTax.address.slice(0, 8)}.csv`);
+  downloadCsv(currentTax.form8949Csv, `polylens-form8949-${currentTax.year}-${csvSuffix()}.csv`);
 });
 
 $("tax-download-coinledger-btn")?.addEventListener("click", () => {
   if (!currentTax?.coinledgerCsv) return;
-  downloadCsv(currentTax.coinledgerCsv, `polylens-coinledger-${currentTax.year}-${currentTax.address.slice(0, 8)}.csv`);
+  downloadCsv(currentTax.coinledgerCsv, `polylens-coinledger-${currentTax.year}-${csvSuffix()}.csv`);
 });
 
 $("tax-download-awaken-btn")?.addEventListener("click", () => {
   if (!currentTax?.awakenCsv) return;
-  downloadCsv(currentTax.awakenCsv, `polylens-awaken-${currentTax.year}-${currentTax.address.slice(0, 8)}.csv`);
+  downloadCsv(currentTax.awakenCsv, `polylens-awaken-${currentTax.year}-${csvSuffix()}.csv`);
 });
 
 $("tax-download-detail-btn").addEventListener("click", () => {
   if (!currentTax?.detailedCsv) return;
-  downloadCsv(currentTax.detailedCsv, `polylens-ledger-${currentTax.year}-${currentTax.address.slice(0, 8)}.csv`);
+  downloadCsv(currentTax.detailedCsv, `polylens-ledger-${currentTax.year}-${csvSuffix()}.csv`);
 });
 
 $("tax-print-btn").addEventListener("click", () => window.print());
