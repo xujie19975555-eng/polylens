@@ -242,6 +242,7 @@ export async function handleApiRequest({
         service: "PolyLens Polymarket Audit & 2026 Tax Ledger",
         status: "ok",
         version: "3.0.0",
+        commitSha: runtimeEnv.VERCEL_GIT_COMMIT_SHA || runtimeEnv.GIT_COMMIT_SHA || null,
         treasury: TREASURY_ADDRESS,
         chains: {
           base: { chainId: CHAINS.base.chainId, usdc: CHAINS.base.defaultToken },
@@ -595,6 +596,12 @@ export async function handleApiRequest({
 
     return jsonResp(404, { error: "not_found", path: pathname });
   } catch (err) {
+    console.error("[polylens] unhandled request error", {
+      method,
+      pathname,
+      message: err?.message || String(err),
+      stack: err?.stack,
+    });
     return jsonResp(500, {
       error: "internal_error",
       message: err?.message || "Unexpected server error",

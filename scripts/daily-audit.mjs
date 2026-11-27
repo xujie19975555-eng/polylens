@@ -145,6 +145,48 @@ export function readBotStoreStats(botDataDir) {
   };
 }
 
+/**
+ * Read and redact the trailing lines of `data/tgbot.err.log` without exposing tokens.
+ */
+export function readTgBotErrorTail(dataDir, maxLines = 10) {
+  const errPath = path.join(dataDir, "tgbot.err.log");
+  if (!fs.existsSync(errPath)) {
+    return { present: false, sizeBytes: 0, lineCount: 0, recentLines: [] };
+  }
+  const stat = fs.statSync(errPath);
+  const sizeBytes = stat.size;
+  const maxBytes = 16 * 1024;
+  const startOffset = Math.max(0, sizeBytes - maxBytes);
+  const fd = fs.openSync(errPath, "r");
+  let raw = "";
+  try {
+    const len = sizeBytes - startOffset;
+    if (len > 0) {
+      const buf = Buffer.alloc(len);
+      fs.readSync(fd, buf, 0, len, startOffset);
+      raw = buf.toString("utf8");
+    }
+  } finally {
+    fs.closeSync(fd);
+  }
+  const sanitizeLine = (line) =>
+    line
+      .replace(/\bbot\d+:[A-Za-z0-9_-]{20,}/g, "bot[REDACTED]")
+      .replace(/\bBearer\s+\S+/gi, "Bearer [REDACTED]")
+      .slice(0, 200);
+  const lines = raw
+    .split(/\r?\n/)
+    .map((l) => l.trim())
+    .filter(Boolean);
+  const recentLines = lines.slice(-Math.max(1, maxLines)).map(sanitizeLine);
+  return {
+    present: true,
+    sizeBytes,
+    lineCount: lines.length,
+    recentLines,
+  };
+}
+
 export function extractMetricsSummary(metricsPayload) {
   const emptyDay = () => ({
     wallet_audit: 0,
@@ -284,6 +326,15 @@ export function buildReviewMarkdown(report) {
   const st = tg.store || {};
   lines.push(`- **LaunchAgent (\`${lc.label || "com.polylens.tgbot"}\`):** loaded=${Boolean(lc.loaded)}, running=${Boolean(lc.running)}, pid=${lc.pid ?? "none"}, lastExit=${lc.lastExitCode ?? "none"}`);
   lines.push(`- **Store Stats (${st.sourceFile || "absent"}):** users=${st.userCount ?? "n/a"}, pro=${st.proUserCount ?? "n/a"}, watchedWallets=${st.watchedWalletCount ?? "n/a"}, watchedMarkets=${st.watchedMarketCount ?? "n/a"}`);
+  if (tg.errorLog) {
+    const recent = Array.isArray(tg.errorLog.recentLines) ? tg.errorLog.recentLines : [];
+    lines.push(
+      `- **Error Log (\`data/tgbot.err.log\`):** present=${Boolean(tg.errorLog.present)}, size=${tg.errorLog.sizeBytes ?? 0}B, recentLines=${recent.length}`
+    );
+    for (const line of recent.slice(-3)) {
+      lines.push(`  - \`${String(line).replace(/`/g, "'")}\``);
+    }
+  }
   lines.push("");
 
   lines.push("## Test Status");
@@ -504,6 +555,7 @@ export async function runDailyAudit({
   ]);
 
   const store = readBotStoreStats(botDataDir);
+  const errorLog = readTgBotErrorTail(path.join(rootDir, "data"));
   const metricsSummary = extractMetricsSummary(metricsPayload);
   const topReadyBacklog = selectTopReadyBacklogItems(backlog, 3);
 
@@ -514,7 +566,7 @@ export async function runDailyAudit({
     health,
     metricsSummary,
     treasury,
-    tgBot: { launchctl, store },
+    tgBot: { launchctl, store, errorLog },
     npm,
     tests,
     topReadyBacklog,

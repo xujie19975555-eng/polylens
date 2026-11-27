@@ -13,14 +13,19 @@ import {
   parseLaunchctlStatus,
   parseNodeTestOutput,
   readBotStoreStats,
+  readTgBotErrorTail,
   selectTopReadyBacklogItems,
 } from "../scripts/daily-audit.mjs";
 import {
+  assertHealthPayload,
   assertMetricsPayload,
   assertSampleCsv,
   assertTaxExport402,
   runVerifyChecks,
+  waitForCommitSha,
 } from "../scripts/verify-live.mjs";
+import { handleApiRequest } from "../src/core/handlers.js";
+import { getRecentMetrics } from "../src/core/replay-store.js";
 import {
   buildXDrafts,
   hasPublishedOnDate,
@@ -311,4 +316,144 @@ test("daily angle rotation, hl-poly-macro draft, and ops/published-log.json dedu
   assert.equal(hasPublishedOnDate(logData, "2026-11-26", "x"), true);
   assert.equal(hasPublishedOnDate(logData, "2026-11-27", "x"), true);
   assert.equal(hasPublishedOnDate(logData, "2099-01-01", "x"), false);
+});
+
+test("/api/health returns commitSha from env and null when unset", async () => {
+  const withSha = await handleApiRequest({
+    pathname: "/api/health",
+    searchParams: new URLSearchParams(),
+    method: "GET",
+    headers: {},
+    deps: { env: { VERCEL_GIT_COMMIT_SHA: "abc1234def5678" } },
+  });
+  assert.equal(withSha.status, 200);
+  assert.equal(JSON.parse(withSha.body).commitSha, "abc1234def5678");
+
+  const withoutSha = await handleApiRequest({
+    pathname: "/api/health",
+    searchParams: new URLSearchParams(),
+    method: "GET",
+    headers: {},
+    deps: { env: {} },
+  });
+  assert.equal(withoutSha.status, 200);
+  assert.equal(JSON.parse(withoutSha.body).commitSha, null);
+});
+
+test("getRecentMetrics returns backend=redis_error instead of silent zeros when Redis MGET fails", async () => {
+  const prevUrl = process.env.UPSTASH_REDIS_REST_URL;
+  const prevToken = process.env.UPSTASH_REDIS_REST_TOKEN;
+  const prevFetch = globalThis.fetch;
+  process.env.UPSTASH_REDIS_REST_URL = "https://redis.example.test";
+  process.env.UPSTASH_REDIS_REST_TOKEN = "test-token";
+  globalThis.fetch = async () => new Response("upstream failure", { status: 503 });
+
+  try {
+    const res = await getRecentMetrics(2, path.join(os.tmpdir(), "nonexistent-replay-store.json"));
+    assert.equal(res.backend, "redis_error");
+    assert.match(res.error, /Redis HTTP 503/);
+    assert.equal(Object.keys(res.days).length, 2);
+  } finally {
+    globalThis.fetch = prevFetch;
+    if (prevUrl === undefined) delete process.env.UPSTASH_REDIS_REST_URL;
+    else process.env.UPSTASH_REDIS_REST_URL = prevUrl;
+    if (prevToken === undefined) delete process.env.UPSTASH_REDIS_REST_TOKEN;
+    else process.env.UPSTASH_REDIS_REST_TOKEN = prevToken;
+  }
+});
+
+test("waitForCommitSha and runVerifyChecks handle stale SHA retries and timeout failures", async () => {
+  assertHealthPayload({ status: "ok", commitSha: "sha-new" }, "sha-new");
+  assert.throws(() => assertHealthPayload({ status: "ok", commitSha: "sha-old" }, "sha-new"), /commitSha/);
+
+  let healthCalls = 0;
+  const retryFetch = async (url) => {
+    if (url.includes("/api/health")) {
+      healthCalls += 1;
+      const sha = healthCalls === 1 ? "sha-old" : "sha-new";
+      return new Response(JSON.stringify({ status: "ok", commitSha: sha }), { status: 200 });
+    }
+    if (url.includes("/api/metrics")) return new Response(JSON.stringify({ backend: "redis" }), { status: 200 });
+    if (url.includes("format=koinly")) {
+      return new Response("Koinly Date,Amount,Currency,Label,Description,TxHash\n", { status: 200 });
+    }
+    if (url.includes("format=form8949")) {
+      return new Response("Description of Property,Date Acquired,Date Sold or Disposed\n", { status: 200 });
+    }
+    if (url.includes("/api/tax-export")) {
+      return new Response(JSON.stringify({ error: "payment_required" }), { status: 402 });
+    }
+    return new Response("<html>ok</html>", { status: 200 });
+  };
+
+  const okRes = await runVerifyChecks({
+    baseUrl: "https://example.test",
+    fetchImpl: retryFetch,
+    expectedCommitSha: "sha-new",
+    waitTimeoutMs: 1000,
+    waitIntervalMs: 1,
+    sleepImpl: async () => {},
+  });
+  assert.equal(okRes.ok, true);
+  assert.equal(okRes.passed, 9);
+  assert.equal(healthCalls, 3);
+
+  const staleFetch = async () =>
+    new Response(JSON.stringify({ status: "ok", commitSha: "sha-old" }), { status: 200 });
+  await assert.rejects(
+    () =>
+      waitForCommitSha({
+        baseUrl: "https://example.test",
+        expectedCommitSha: "sha-new",
+        fetchImpl: staleFetch,
+        timeoutMs: 0,
+        intervalMs: 1,
+        sleepImpl: async () => {},
+      }),
+    /Timed out waiting for \/api\/health commitSha="sha-new"/
+  );
+});
+
+test("readTgBotErrorTail redacts secrets and buildReviewMarkdown renders Error Log section", () => {
+  const tmpData = fs.mkdtempSync(path.join(os.tmpdir(), "polylens-tglog-"));
+  try {
+    const missing = readTgBotErrorTail(tmpData);
+    assert.deepEqual(missing, { present: false, sizeBytes: 0, lineCount: 0, recentLines: [] });
+
+    fs.writeFileSync(
+      path.join(tmpData, "tgbot.err.log"),
+      [
+        "2026-11-27T01:00:00Z poll fail https://api.telegram.org/bot123456:ABCDEFGHIJKLMNOPQRSTUVWX/getUpdates",
+        "2026-11-27T02:00:00Z auth fail Bearer secret123_token",
+      ].join("\n") + "\n"
+    );
+    const tail = readTgBotErrorTail(tmpData, 5);
+    assert.equal(tail.present, true);
+    assert.equal(tail.recentLines.length, 2);
+    assert.equal(tail.recentLines[0].includes("ABCDEFGHIJKLMNOPQRSTUVWX"), false);
+    assert.ok(tail.recentLines[0].includes("bot[REDACTED]"));
+    assert.equal(tail.recentLines[1].includes("secret123_token"), false);
+    assert.ok(tail.recentLines[1].includes("Bearer [REDACTED]"));
+
+    const md = buildReviewMarkdown({
+      date: "2026-11-27",
+      generatedAt: "2026-11-27T08:00:00.000Z",
+      baseUrl: "https://polylens-zeta.vercel.app",
+      npm: { ok: true, version: "2.0.0" },
+      health: [],
+      metricsSummary: extractMetricsSummary(null),
+      treasury: {},
+      tgBot: {
+        launchctl: { label: "com.polylens.tgbot", loaded: true, running: true, pid: 123, lastExitCode: 0 },
+        store: { sourceFile: null, userCount: 0, proUserCount: 0, watchedWalletCount: 0, watchedMarketCount: 0 },
+        errorLog: tail,
+      },
+      tests: { ok: true, exitCode: 0, total: 1, pass: 1, fail: 0, skipped: 0 },
+      topReadyBacklog: [],
+    });
+    assert.ok(md.includes("**Error Log (`data/tgbot.err.log`):** present=true"));
+    assert.ok(md.includes("bot[REDACTED]"));
+  } finally {
+    fs.rmSync(tmpData, { recursive: true, force: true });
+  }
 });

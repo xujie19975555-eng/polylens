@@ -1,4 +1,6 @@
 import fs from "node:fs";
+import path from "node:path";
+import { execFileSync } from "node:child_process";
 import { fileURLToPath } from "node:url";
 
 const DEFAULT_BASE_URL = "https://polylens-zeta.vercel.app";
@@ -10,9 +12,56 @@ export function assertStatus(res, expectedStatus, label) {
   }
 }
 
-export function assertHealthPayload(payload) {
+export function assertHealthPayload(payload, expectedCommitSha = null) {
   if (!payload || payload.status !== "ok") {
     throw new Error(`/api/health: expected status="ok", got ${JSON.stringify(payload)}`);
+  }
+  if (expectedCommitSha && payload.commitSha !== expectedCommitSha) {
+    throw new Error(
+      `/api/health: expected commitSha="${expectedCommitSha}", got ${JSON.stringify(payload.commitSha ?? null)}`
+    );
+  }
+}
+
+/**
+ * Poll `/api/health` until the deployed commitSha matches `expectedCommitSha` or timeout expires.
+ */
+export async function waitForCommitSha({
+  baseUrl = DEFAULT_BASE_URL,
+  expectedCommitSha,
+  fetchImpl = fetch,
+  timeoutMs = 90_000,
+  intervalMs = 5_000,
+  sleepImpl = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+} = {}) {
+  const clean = String(baseUrl).replace(/\/+$/, "");
+  const deadline = Date.now() + Math.max(0, timeoutMs);
+  let attempts = 0;
+  let lastObserved = "no_response";
+
+  while (true) {
+    attempts += 1;
+    try {
+      const res = await fetchImpl(`${clean}/api/health`, { signal: AbortSignal.timeout(12_000) });
+      if (res?.status === 200) {
+        const payload = await res.json();
+        if (payload?.status === "ok" && payload?.commitSha === expectedCommitSha) {
+          return { ok: true, attempts, commitSha: expectedCommitSha };
+        }
+        lastObserved = `commitSha=${JSON.stringify(payload?.commitSha ?? null)}`;
+      } else {
+        lastObserved = `http_${res?.status ?? "no_response"}`;
+      }
+    } catch (err) {
+      lastObserved = err?.message || String(err);
+    }
+
+    if (Date.now() >= deadline) {
+      throw new Error(
+        `Timed out waiting for /api/health commitSha="${expectedCommitSha}" after ${attempts} attempts (last=${lastObserved})`
+      );
+    }
+    await sleepImpl(intervalMs);
   }
 }
 
@@ -51,7 +100,7 @@ export function assertTaxExport402(status, payload) {
   }
 }
 
-export function buildVerifySpecs(baseUrl = DEFAULT_BASE_URL) {
+export function buildVerifySpecs(baseUrl = DEFAULT_BASE_URL, { expectedCommitSha = null } = {}) {
   const clean = String(baseUrl).replace(/\/+$/, "");
   return [
     {
@@ -79,7 +128,7 @@ export function buildVerifySpecs(baseUrl = DEFAULT_BASE_URL) {
       url: `${clean}/api/health`,
       validate: async (res) => {
         assertStatus(res, 200, "GET /api/health");
-        assertHealthPayload(await res.json());
+        assertHealthPayload(await res.json(), expectedCommitSha);
       },
     },
     {
@@ -119,8 +168,41 @@ export function buildVerifySpecs(baseUrl = DEFAULT_BASE_URL) {
 export async function runVerifyChecks({
   baseUrl = process.env.POLYLENS_BASE_URL || DEFAULT_BASE_URL,
   fetchImpl = fetch,
+  expectedCommitSha = process.env.POLYLENS_EXPECT_SHA || null,
+  waitTimeoutMs = 90_000,
+  waitIntervalMs = 5_000,
+  sleepImpl,
 } = {}) {
-  const specs = buildVerifySpecs(baseUrl);
+  const specs = buildVerifySpecs(baseUrl, { expectedCommitSha });
+  if (expectedCommitSha) {
+    const startedWait = Date.now();
+    try {
+      await waitForCommitSha({
+        baseUrl,
+        expectedCommitSha,
+        fetchImpl,
+        timeoutMs: waitTimeoutMs,
+        intervalMs: waitIntervalMs,
+        sleepImpl,
+      });
+    } catch (err) {
+      return {
+        ok: false,
+        passed: 0,
+        total: specs.length,
+        results: [
+          {
+            name: "WAIT /api/health commitSha",
+            ok: false,
+            status: null,
+            latencyMs: Date.now() - startedWait,
+            error: err?.message || String(err),
+          },
+        ],
+      };
+    }
+  }
+
   const results = [];
   for (const spec of specs) {
     const started = Date.now();
@@ -147,6 +229,16 @@ export async function runVerifyChecks({
   };
 }
 
+function resolveCliExpectedSha(argv) {
+  const idx = argv.indexOf("--expect-sha");
+  if (idx !== -1 && argv[idx + 1]) return String(argv[idx + 1]).trim();
+  if (argv.includes("--expect-head")) {
+    const repoRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), "..");
+    return execFileSync("git", ["rev-parse", "HEAD"], { cwd: repoRoot, encoding: "utf8" }).trim();
+  }
+  return process.env.POLYLENS_EXPECT_SHA || null;
+}
+
 function isDirectExecution() {
   if (!process.argv[1]) return false;
   try {
@@ -157,7 +249,8 @@ function isDirectExecution() {
 }
 
 if (isDirectExecution()) {
-  const summary = await runVerifyChecks();
+  const expectedCommitSha = resolveCliExpectedSha(process.argv.slice(2));
+  const summary = await runVerifyChecks({ expectedCommitSha });
   for (const r of summary.results) {
     if (r.ok) {
       console.log(`PASS ${r.name} (${r.status}, ${r.latencyMs}ms)`);

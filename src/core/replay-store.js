@@ -121,8 +121,8 @@ export async function incrementMetric(eventName, localStorePath = LOCAL_STORE_PA
     store.metrics[day] = store.metrics[day] || {};
     store.metrics[day][safeName] = (store.metrics[day][safeName] || 0) + 1;
     writeLocalStore(store, localStorePath);
-  } catch {
-    // Non-fatal metric drop
+  } catch (err) {
+    console.error("[polylens] metric INCR failed", err?.message || String(err));
   }
 }
 
@@ -160,14 +160,19 @@ export async function getRecentMetrics(days = 7, localStorePath = LOCAL_STORE_PA
     for (const d of dates) {
       for (const n of names) keys.push(`polylens:metrics:${d}:${n}`);
     }
-    const vals = await redisCmd(["MGET", ...keys]).catch(() => []);
-    let idx = 0;
-    for (const d of dates) {
-      for (const n of names) {
-        out[d][n] = Number(vals?.[idx++] || 0);
+    try {
+      const vals = await redisCmd(["MGET", ...keys]);
+      let idx = 0;
+      for (const d of dates) {
+        for (const n of names) {
+          out[d][n] = Number(vals?.[idx++] || 0);
+        }
       }
+      return { backend: "redis", days: out };
+    } catch (err) {
+      console.error("[polylens] metric MGET failed", err?.message || String(err));
+      return { backend: "redis_error", error: err?.message || String(err), days: out };
     }
-    return { backend: "redis", days: out };
   }
 
   const store = readLocalStore(localStorePath);
