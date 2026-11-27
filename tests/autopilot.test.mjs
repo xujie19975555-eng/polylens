@@ -267,6 +267,7 @@ test("buildXDrafts enforces <=255 char main tweet and includes tax-export + wall
   });
   assert.equal(liveDrafts.usedLiveWhale, true);
   assert.ok(liveDrafts.mainTweet.length <= 255, `Expected <=255, got ${liveDrafts.mainTweet.length}`);
+  assert.ok(liveDrafts.mainTweet.endsWith("."), `Expected complete sentence without mid-word slice: ${liveDrafts.mainTweet}`);
   assert.equal(liveDrafts.mainTweet.includes("http"), false);
   assert.ok(liveDrafts.replyTweet.includes("https://polylens-zeta.vercel.app/tax-export"));
   assert.ok(liveDrafts.replyTweet.includes("https://polylens-zeta.vercel.app/?w=0xaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"));
@@ -308,5 +309,6 @@ test("daily angle rotation, hl-poly-macro draft, and ops/published-log.json dedu
   const logPath = path.join(ROOT_DIR, "ops", "published-log.json");
   const logData = JSON.parse(fs.readFileSync(logPath, "utf8"));
   assert.equal(hasPublishedOnDate(logData, "2026-11-26", "x"), true);
-  assert.equal(hasPublishedOnDate(logData, "2026-11-27", "x"), false);
+  assert.equal(hasPublishedOnDate(logData, "2026-11-27", "x"), true);
+  assert.equal(hasPublishedOnDate(logData, "2099-01-01", "x"), false);
 });

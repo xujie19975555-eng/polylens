@@ -79,7 +79,7 @@ export function buildXDrafts({
     const shortTitle = truncateText(topTrade.title, 44);
     mainTweet =
       `Top Polymarket whale flow today (${dateStr}): ${usdLabel} ${side} "${outcome}" on "${shortTitle}".\n\n` +
-      `Reminder before tax season: raw Polygon wallet syncs drop $0 losing CTF redemptions — so you risk paying tax on wins without deducting losses.`;
+      `Tax tip: raw Polygon syncs drop $0 losing redemptions — leaving you taxed on wins without deducting losses.`;
   } else {
     mainTweet =
       `Polymarket tax trap we live-tested on Koinly:\n\n` +
@@ -91,13 +91,13 @@ export function buildXDrafts({
   }
 
   const replyLines = [
-    `Free Polymarket FIFO tax scan + free Koinly sample CSV (no signup):`,
-    `Tax Export (7 USDC for full Koinly / IRS Form 8949 / CoinLedger / Awaken): ${resolvedTaxUrl}`,
-    `Sample CSV: ${sampleUrl}`,
-    `Wallet audit: ${resolvedWalletUrl}`,
+    `Free Polymarket FIFO tax scan + free Koinly sample CSV (no signup): `,
+    `Tax Export (7 USDC single / 15 USDC 5-wallet bundle — Koinly, Form 8949, CoinLedger, Awaken): ${resolvedTaxUrl} `,
+    `Sample CSV: ${sampleUrl} `,
+    `Wallet audit: ${resolvedWalletUrl} `,
   ];
   if (resolvedAngle === "hl-poly-macro" && hasLiveFunding) {
-    replyLines.push(`HL radar: ${hlUrl}`);
+    replyLines.push(`HL radar: ${hlUrl} `);
   }
   const replyTweet = replyLines.join("\n");
 

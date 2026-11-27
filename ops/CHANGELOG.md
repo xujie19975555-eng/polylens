@@ -1,5 +1,10 @@
 # PolyLens Changelog
 
+## 2026-11-27 (Autopilot Chrome MCP Fix & Draft Cleanups) — Unattended X Publishing + Clean `whale-tax` Copy
+- Switched `ops/AUTOPILOT.md` Step 7 and `polylens-daily-autopilot/sidecar.json` from the Hub-dependent `browser` subagent to `chrome-devtools` MCP (`mcp(chrome-devtools/*)` grants) so unattended 09:15 runs can publish directly via native Chrome without a Hub window.
+- Shortened `whale-tax` copy and padded reply-line URLs in `scripts/generate-x-drafts.mjs` to prevent mid-word clipping and Draft.js line-merge concatenation, plus updated unit assertions in `tests/autopilot.test.mjs`.
+- Published today's (`2026-11-27`) live X thread on `@xujie19975555` (`status/2126201392314667141` + `status/2126202061431996791`) and updated `ops/published-log.json` and `ops/reviews/2026-11-27.md`.
+
 ## 2026-11-27 — v3.5.0 Multi-Wallet Bundle FIFO Tax Export (Up to 5 Wallets, 15 USDC)
 - **Multi-Wallet FIFO Merging (`src/core/tax-fifo.js`, `src/core/config.js`, `src/core/handlers.js`):**
   - Added `PRICING.taxBundleUsdc` (`15` USDC / `15_000_000n`) and `PRICING.maxBundleWallets` (`5`) while keeping single-wallet pricing at `7` USDC.

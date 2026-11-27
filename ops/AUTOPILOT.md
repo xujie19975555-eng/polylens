@@ -46,11 +46,12 @@ This document defines the zero-human daily review and engineering loop for PolyL
 7. **Autonomous Daily Distribution (X + Weekly Reddit Megathread)**
    - **Daily X (`@xujie19975555`, strict max 1 thread/day):**
      - Check `ops/published-log.json`. If today's date (`YYYY-MM-DD`) already has `"channel": "x"`, skip posting.
-     - Otherwise read `ops/drafts/YYYY-MM-DD.md`, delegate to the `browser` subagent (`Model: "flash"`) to open `https://x.com/compose/post`, confirm logged in as `@xujie19975555`, publish `Main Tweet`, open the posted status URL, and publish `Self-Reply Tweet` as a direct reply.
+     - Otherwise read `ops/drafts/YYYY-MM-DD.md`, open a temporary Chrome tab via `chrome-devtools` MCP (`new_page` on `https://x.com/home`, background or foreground), and verify via `take_snapshot` that the signed-in account is `@xujie19975555` (NEVER post under any other account).
+     - Compose & publish `Main Tweet`, navigate to the posted status URL (`https://x.com/xujie19975555/status/<id>`), publish `Self-Reply Tweet` as a direct reply, capture both status URLs, and close ONLY the temporary tab via `close_page`.
      - Append `{ "date": "YYYY-MM-DD", "channel": "x", "account": "@xujie19975555", "angle": "...", "url": "...", "replyUrl": "..." }` to `ops/published-log.json`.
-     - If logged out, blocked, or any CAPTCHA appears, STOP immediately and log `NEEDS_HUMAN`. Never automate bulk replies or DMs.
+     - If Chrome MCP cannot connect, logged out, wrong account, blocked, or any CAPTCHA appears, STOP immediately and log `NEEDS_HUMAN`. Never automate bulk replies or DMs.
    - **Weekly Reddit (Mondays only, `r/Polymarket` showcase megathread):**
-     - If today is Monday (`UTC+8`) and no `"channel": "reddit"` entry in `ops/published-log.json` falls within the last 7 days, post 1 non-spam technical update comment in the active `r/Polymarket` megathread (NEVER standalone promotional posts) and append to `ops/published-log.json`.
+     - If today is Monday (`UTC+8`) and no `"channel": "reddit"` entry in `ops/published-log.json` falls within the last 7 days, use `chrome-devtools` MCP (`new_page` -> `take_snapshot` -> verify `u/HumorDisastrous1082` -> reply -> `close_page`) to post 1 non-spam technical update comment in the active `r/Polymarket` megathread (NEVER standalone promotional posts) and append to `ops/published-log.json`.
 
 8. **Update Ops Records**
    - Update `ops/BACKLOG.json` (mark completed item `"done"`).
