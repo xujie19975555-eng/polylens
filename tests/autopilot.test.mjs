@@ -29,6 +29,7 @@ import { getRecentMetrics } from "../src/core/replay-store.js";
 import {
   buildXDrafts,
   countRepliesOnDate,
+  fetchJsonWithBackoff,
   hasPublishedOnDate,
   hasRepliedToStatus,
   hasRepliedToTarget,
@@ -363,6 +364,69 @@ test("hasRepliedToStatus, hasRepliedToTarget, and countRepliesOnDate enforce x-r
   assert.equal(countRepliesOnDate(logData, "2026-11-26"), 1);
   assert.equal(countRepliesOnDate(logData, "2026-11-28"), 0);
   assert.equal(countRepliesOnDate(null, "2026-11-27"), 0);
+});
+
+test("fetchJsonWithBackoff retries 429s cleanly and renderDraftsMarkdown includes Q&A Queue section", async () => {
+  const sleepCalls = [];
+  let attempts429 = 0;
+  const okAfterRetry = await fetchJsonWithBackoff("https://example.test/api", {
+    baseDelayMs: 100,
+    maxRetries: 2,
+    sleepImpl: async (ms) => sleepCalls.push(ms),
+    fetchImpl: async () => {
+      attempts429 += 1;
+      if (attempts429 < 3) {
+        return new Response("rate limited", { status: 429 });
+      }
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    },
+  });
+  assert.deepEqual(okAfterRetry, { ok: true });
+  assert.equal(attempts429, 3);
+  assert.deepEqual(sleepCalls, [100, 200]);
+
+  let exhaustedAttempts = 0;
+  const exhausted = await fetchJsonWithBackoff("https://example.test/api", {
+    baseDelayMs: 50,
+    maxRetries: 2,
+    sleepImpl: async () => {},
+    fetchImpl: async () => {
+      exhaustedAttempts += 1;
+      return new Response("still limited", { status: 429 });
+    },
+  });
+  assert.equal(exhausted, null);
+  assert.equal(exhaustedAttempts, 3);
+
+  let non429Attempts = 0;
+  const serverErr = await fetchJsonWithBackoff("https://example.test/api", {
+    maxRetries: 2,
+    sleepImpl: async () => {},
+    fetchImpl: async () => {
+      non429Attempts += 1;
+      return new Response("err", { status: 500 });
+    },
+  });
+  assert.equal(serverErr, null);
+  assert.equal(non429Attempts, 1);
+
+  const emptyDraftMd = renderDraftsMarkdown(buildXDrafts({ dateStr: "2026-11-27", topTrade: null }));
+  assert.ok(emptyDraftMd.includes("## Q&A Queue (Manual Reply Drafts)"));
+  assert.ok(emptyDraftMd.includes("None today."));
+
+  const populatedMd = renderDraftsMarkdown({
+    ...buildXDrafts({ dateStr: "2026-11-27", topTrade: null }),
+    qaQueue: [
+      {
+        source: "r/CryptoTax",
+        title: "How to import Polymarket losses into Koinly?",
+        url: "https://www.reddit.com/r/CryptoTax/comments/abc123/polymarket/",
+        draftReply: "Use chronological FIFO from /v2/activity so $0 redemptions close cost basis.",
+      },
+    ],
+  });
+  assert.ok(populatedMd.includes("https://www.reddit.com/r/CryptoTax/comments/abc123/polymarket/"));
+  assert.ok(populatedMd.includes("Draft Reply:"));
 });
 
 test("/api/health returns commitSha from env and null when unset", async () => {

@@ -161,9 +161,39 @@
       "revenueHypothesis": "Converts active free TG alert users into 7 USDC tax export buyers without building paid TG infra."
     },
     {
+      "id": "distribution-draft-only-mode",
+      "title": "Switch Autopilot social distribution to compliant draft-only mode with search-index Q&A queue",
+      "priority": "P0",
+      "status": "done",
+      "category": "ops",
+      "ownerFiles": [
+        "ops/AUTOPILOT.md",
+        "scripts/generate-x-drafts.mjs",
+        "tests/autopilot.test.mjs"
+      ],
+      "acceptanceCriteria": "Autopilot makes 0 automated requests to x.com or reddit.com, discovers Q&As solely via bounded search_web queries, outputs Q&A Queue drafts, and backs off politely on API 429s.",
+      "revenueHypothesis": "Eliminates X 429, Reddit 403, and account-ban risk while focusing operator time on compounding SEO and manual high-trust replies."
+    },
+    {
+      "id": "polymarket-tax-loss-harvesting-seo",
+      "title": "Publish Polymarket Tax-Loss Harvesting & Deductible Losses SEO guide",
+      "priority": "P0",
+      "status": "ready",
+      "category": "seo",
+      "ownerFiles": [
+        "public/polymarket-tax-loss-harvesting.html",
+        "public/sitemap.xml",
+        "public/llms.txt",
+        "index.js",
+        "vercel.json"
+      ],
+      "acceptanceCriteria": "Serve /polymarket-tax-loss-harvesting explaining losing CTF redemptions ($0 proceeds) and Form 8949 loss offsets before year-end, indexed in sitemap.xml and llms.txt.",
+      "revenueHypothesis": "Captures late-November/December year-end search traffic from Polymarket traders offsetting winning trades."
+    },
+    {
       "id": "polymarket-1099-da-faq",
       "title": "Publish Polymarket 1099-DA FAQ SEO page",
-      "priority": "P1",
+      "priority": "P0",
       "status": "ready",
       "category": "seo",
       "ownerFiles": [
@@ -177,18 +207,20 @@
       "revenueHypothesis": "Captures anxious US filers searching whether Polymarket issues a 1099-DA and routes them straight to /tax-export."
     },
     {
-      "id": "dynamic-trader-og-card",
-      "title": "Add dynamic trader PnL SVG/OG social card route for ?w=0x... shares",
-      "priority": "P2",
+      "id": "turbotax-txf-export",
+      "title": "Add TurboTax Desktop TXF (Tax Exchange Format) export alongside CSVs",
+      "priority": "P1",
       "status": "ready",
-      "category": "growth",
+      "category": "product",
       "ownerFiles": [
+        "src/core/tax-fifo.js",
         "src/core/handlers.js",
-        "public/client.js",
+        "public/tax-export.html",
+        "public/tax-export.js",
         "tests/v3-security-tax.test.mjs"
       ],
-      "acceptanceCriteria": "GET /api/trader-card?address=0x... returns deterministic SVG trader card with PnL, rank, win rate, and tax-export CTA; Share on X links include wallet URL.",
-      "revenueHypothesis": "Increases viral CTR on X when traders share their audited wallet PnL cards."
+      "acceptanceCriteria": "Export buildTurboTaxTxf in src/core/tax-fifo.js emitting valid V042 TXF capital-gain/loss records (codes 321/323/711/713), expose txfExport in /api/tax-export and UI download button.",
+      "revenueHypothesis": "Removes manual CSV-to-TurboTax conversion for US retail filers using TurboTax Desktop."
     },
     {
       "id": "schedule-d-term-totals",
@@ -206,22 +238,6 @@
       "revenueHypothesis": "Makes Schedule D Part I / Part II line entry immediate for US self-filers."
     },
     {
-      "id": "polymarket-tax-loss-harvesting-seo",
-      "title": "Publish Polymarket Tax-Loss Harvesting & Deductible Losses SEO guide",
-      "priority": "P1",
-      "status": "ready",
-      "category": "seo",
-      "ownerFiles": [
-        "public/polymarket-tax-loss-harvesting.html",
-        "public/sitemap.xml",
-        "public/llms.txt",
-        "index.js",
-        "vercel.json"
-      ],
-      "acceptanceCriteria": "Serve /polymarket-tax-loss-harvesting explaining losing CTF redemptions ($0 proceeds) and Form 8949 loss offsets before year-end, indexed in sitemap.xml and llms.txt.",
-      "revenueHypothesis": "Captures late-November/December year-end search traffic from Polymarket traders offsetting winning trades."
-    },
-    {
       "id": "polymarket-csv-mcp-tool",
       "title": "Add free preview_polymarket_tax_events tool to polylens-mcp npm package",
       "priority": "P2",
@@ -236,20 +252,18 @@
       "revenueHypothesis": "Turns MCP tool invocations from coding/crypto agents into high-intent 7 USDC tax export traffic."
     },
     {
-      "id": "turbotax-txf-export",
-      "title": "Add TurboTax Desktop TXF (Tax Exchange Format) export alongside CSVs",
+      "id": "dynamic-trader-og-card",
+      "title": "Add dynamic trader PnL SVG/OG social card route for ?w=0x... shares",
       "priority": "P2",
       "status": "ready",
-      "category": "product",
+      "category": "growth",
       "ownerFiles": [
-        "src/core/tax-fifo.js",
         "src/core/handlers.js",
-        "public/tax-export.html",
-        "public/tax-export.js",
+        "public/client.js",
         "tests/v3-security-tax.test.mjs"
       ],
-      "acceptanceCriteria": "Export buildTurboTaxTxf in src/core/tax-fifo.js emitting valid V042 TXF capital-gain/loss records (codes 321/323/711/713), expose txfExport in /api/tax-export and UI download button.",
-      "revenueHypothesis": "Removes manual CSV-to-TurboTax conversion for US retail filers using TurboTax Desktop."
+      "acceptanceCriteria": "GET /api/trader-card?address=0x... returns deterministic SVG trader card with PnL, rank, win rate, and tax-export CTA; Share on X links include wallet URL.",
+      "revenueHypothesis": "Increases viral CTR on X when traders share their audited wallet PnL cards."
     },
     {
       "id": "custom-domain-dns-setup",

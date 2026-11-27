@@ -43,27 +43,16 @@ This document defines the zero-human daily review and engineering loop for PolyL
      ```
    - Confirm exit code `0` (all routes HTTP 200, `/api/metrics` backend `"redis"`, `/api/tax-sample` CSV headers valid, unpaid `/api/tax-export` HTTP 402).
 
-7. **Autonomous Daily Distribution (X + Weekly Reddit Megathread)**
-   - **Daily X (`@xujie19975555`, strict max 1 thread/day):**
-     - Check `ops/published-log.json`. If today's date (`YYYY-MM-DD`) already has `"channel": "x"`, skip posting.
-     - Otherwise read `ops/drafts/YYYY-MM-DD.md`, open a temporary Chrome tab via `chrome-devtools` MCP (`new_page` on `https://x.com/home`, background or foreground), and verify via `take_snapshot` that the signed-in account is `@xujie19975555` (NEVER post under any other account).
-     - Compose & publish `Main Tweet`, navigate to the posted status URL (`https://x.com/xujie19975555/status/<id>`), publish `Self-Reply Tweet` as a direct reply, capture both status URLs, and close ONLY the temporary tab via `close_page`.
-     - Append `{ "date": "YYYY-MM-DD", "channel": "x", "account": "@xujie19975555", "angle": "...", "url": "...", "replyUrl": "..." }` to `ops/published-log.json`.
-     - If Chrome MCP cannot connect, logged out, wrong account, blocked, or any CAPTCHA appears, STOP immediately and log `NEEDS_HUMAN`. Never automate bulk replies (>2/day), unsolicited promos, or DMs.
-   - **Daily Targeted X Q&A Interception (`@xujie19975555`, strict max 2 replies/day combined):**
-     - Check `ops/published-log.json` (`countRepliesOnDate(logData, today, "x-reply")`); if already `>= 2`, skip.
-     - Reuse the temporary `chrome-devtools` MCP tab (confirmed signed in as `@xujie19975555`) to search live X tabs (`-to:Polymarket -from:Polymarket`) across two tracks:
-       1. High-frequency wallet/PnL/whale analytics Q&As (`polymarket` + `"pnl"`/`"win rate"`/`"wallet tracker"`/`"trade history"`/`"export csv"` or real humans posting `0x` Polymarket addresses).
-       2. Polymarket tax/CSV/Koinly/Form 8949 Q&As (`polymarket tax`, `polymarket koinly`, `polymarket 8949`, `polymarket taxes`).
-     - Strictly reply ONLY to genuine human questions/discussions from the last 48h (expand up to 7d only if `< 2` exist). Skip political/macro "tax" chatter, automated whale-alert bots, competitor promos, memecoin shills, `@xujie19975555`, and any `targetStatusId` already logged (`hasRepliedToTarget`). If 0 qualify, post 0.
-     - Write a tailored **single-paragraph** reply (NO `\n` to prevent Draft.js URL concatenation): 1–2 concise helpful sentences + at most 1 free link (`https://polylens-zeta.vercel.app/` or `https://polylens-zeta.vercel.app/?w=<addr>` for wallet/PnL; `https://polylens-zeta.vercel.app/tax-export` or `/api/tax-sample?format=koinly` for tax/CSV), NO hard `$7/$15` pitch. Submit via `Meta+Enter`, reload to confirm clean link rendering.
-     - Append `{ "date": "YYYY-MM-DD", "channel": "x-reply", "topic": "wallet-pnl"|"tax", "account": "@xujie19975555", "targetStatusId": "...", "targetUrl": "...", "replyUrl": "..." }` to `ops/published-log.json`. Stop immediately and log `NEEDS_HUMAN` on Chrome MCP failure, wrong account, auth loss, or CAPTCHA.
-   - **Daily Targeted Reddit Tax Q&A (`r/Polymarket` + `r/CryptoTax`, `u/HumorDisastrous1082`, strict max 1 reply/day):**
-     - Check `ops/published-log.json` (`countRepliesOnDate(logData, today, "reddit-reply")`); if already `>= 1`, skip.
-     - Using the temporary `chrome-devtools` MCP tab, search `r/Polymarket` (`q=tax&sort=new&t=month`) and `r/CryptoTax` (`q=polymarket&sort=new&t=month`), and verify signed in as `u/HumorDisastrous1082` (if logged out or CAPTCHA appears, stop without touching credentials and log `NEEDS_HUMAN` with any discovered candidate URLs).
-     - Reply to at most 1 genuine recent human Polymarket tax/CSV/Koinly/Form 8949 question not already logged (`hasRepliedToTarget(logData, postId, "reddit-reply")`) with a helpful technical answer and zero hard sales pitch; reload to verify and append `{ "date": "YYYY-MM-DD", "channel": "reddit-reply", "account": "u/HumorDisastrous1082", "subreddit": "r/...", "targetPostId": "...", "targetUrl": "...", "replyUrl": "..." }` to `ops/published-log.json`. Close ONLY the temp tab when done.
-   - **Weekly Reddit (Mondays only, `r/Polymarket` showcase megathread):**
-     - If today is Monday (`UTC+8`) and no `"channel": "reddit"` entry in `ops/published-log.json` falls within the last 7 days, use `chrome-devtools` MCP (`new_page` -> `take_snapshot` -> verify `u/HumorDisastrous1082` -> reply -> `close_page`) to post 1 non-spam technical update comment in the active `r/Polymarket` megathread (NEVER standalone promotional posts) and append to `ops/published-log.json`.
+7. **Draft-only Distribution & Search-Index Q&A Queue (Zero Direct X/Reddit Automation)**
+   - **Hard Compliance Rule:** Make **0 automated requests to `x.com` or `reddit.com`** (no Chrome MCP, no web-UI posting or search scripts). All social publishing is `draft_only` / manual by the owner to eliminate X `429`, Reddit `403`, and ToS ban risk.
+   - **Daily X & Monday Batch Drafts (`ops/drafts/YYYY-MM-DD.md`):**
+     - `scripts/generate-x-drafts.mjs` generates today's `Main Tweet` + `Self-Reply Tweet` (using polite `HTTP 429` exponential backoff max 2 retries on Polymarket/Hyperliquid public APIs).
+     - On Mondays (`UTC+8`), also include 3–5 ready-to-schedule drafts in `ops/drafts/YYYY-MM-DD.md` so the owner can queue them via X's native scheduler in ~2 minutes.
+     - Whenever the owner reports manually posted X/Reddit URLs, append them to `ops/published-log.json` with `"mode": "manual"` and deduplicate against future queues.
+   - **Search-Index Q&A Discovery Queue (`search_web` only):**
+     - Run at most **4** `search_web` queries/day before Dec 31 (and at most **8**/day Jan–Apr) targeting `site:reddit.com/r/CryptoTax polymarket`, `site:reddit.com/r/tax polymarket`, `site:reddit.com/r/Polymarket (tax OR koinly OR 8949 OR csv)`, and `site:discuss.koinly.io polymarket`.
+     - On any search error, stop discovery for the day (no retries).
+     - Deduplicate candidate post IDs against `ops/published-log.json` (`hasRepliedToTarget`), and append up to **3** genuine recent human questions with technical draft replies (at most 1 free sample/preview link, zero hard `$7/$15` pricing pitch) under `## Q&A Queue (Manual Reply Drafts)` in `ops/drafts/YYYY-MM-DD.md`. If 0 qualify, leave `None today.`.
 
 8. **Update Ops Records**
    - Update `ops/BACKLOG.json` (mark completed item `"done"`).

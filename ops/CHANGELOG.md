@@ -1,5 +1,10 @@
 # PolyLens Changelog
 
+## 2026-11-27 (Draft-Only Compliant Distribution & Backlog Reprioritization) — Zero X/Reddit Automation
+- Switched Autopilot Step 7 (`ops/AUTOPILOT.md`) and `polylens-daily-autopilot/sidecar.json` strictly to `draft_only` distribution + Google-index `search_web` Q&A Queue (0 automated requests to `x.com` or `reddit.com`; removed all `chrome-devtools/*`, `x.com`, and `reddit.com` access grants from `sidecar.json`).
+- Added polite `HTTP 429` exponential-backoff helper `fetchJsonWithBackoff` (max 2 retries) and `## Q&A Queue (Manual Reply Drafts)` rendering in `scripts/generate-x-drafts.mjs`, with offline unit tests in `tests/autopilot.test.mjs`.
+- Recorded `distribution-draft-only-mode` as `done` (`P0`) in `ops/BACKLOG.json` and reprioritized `polymarket-tax-loss-harvesting-seo` (`P0`), `polymarket-1099-da-faq` (`P0`), `turbotax-txf-export` (`P1`), and `schedule-d-term-totals` (`P1`) ahead of the Dec 31 tax-loss window and Jan–Apr filing season.
+
 ## 2026-11-27 (Dual-Track X PnL/Whale + Reddit Tax Q&A Interception) — Autopilot & Dedupe Expansion
 - Extended `hasRepliedToStatus` and added `hasRepliedToTarget` in `scripts/generate-x-drafts.mjs` to support both `targetStatusId` (`channel: "x-reply"`) and `targetPostId` (`channel: "reddit-reply"`), with expanded cross-channel unit tests in `tests/autopilot.test.mjs`.
 - Updated `ops/AUTOPILOT.md` Step 7 and `polylens-daily-autopilot/sidecar.json` (`args[4]`) to run dual-track Q&A interception: X (`@xujie19975555`, max 2/day combined across wallet/PnL/whale analytics + tax/Koinly/8949 Q&As) and Reddit (`u/HumorDisastrous1082` on `r/Polymarket` + `r/CryptoTax`, max 1/day).

@@ -154,6 +154,16 @@ export function buildXDrafts({
 }
 
 export function renderDraftsMarkdown(drafts) {
+  const qaItems = Array.isArray(drafts.qaQueue) ? drafts.qaQueue.slice(0, 3) : [];
+  const qaLines =
+    qaItems.length === 0
+      ? [`None today.`]
+      : qaItems.flatMap((item, idx) => [
+          `${idx + 1}. **${item.source || "Q&A"}** — ${item.title || "Untitled"}`,
+          `   - URL: ${item.url}`,
+          `   - Draft Reply: ${item.draftReply}`,
+        ]);
+
   return [
     `# PolyLens Daily X & Reddit Drafts — ${drafts.dateStr}`,
     ``,
@@ -176,37 +186,59 @@ export function renderDraftsMarkdown(drafts) {
     `## Reddit Troubleshooting Draft (r/Polymarket / r/CryptoTax)`,
     drafts.redditDraft,
     ``,
+    `## Q&A Queue (Manual Reply Drafts)`,
+    ...qaLines,
+    ``,
   ].join("\n");
 }
 
-async function fetchTopWhaleTrade(baseUrl = DEFAULT_BASE_URL) {
-  try {
-    const res = await fetch(`${baseUrl}/api/whale-tape?minUsd=5000&sort=size`, {
-      headers: { "User-Agent": "PolyLensAutopilot/1.0", Accept: "application/json" },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const trades = Array.isArray(data?.trades) ? data.trades : [];
-    return trades.find((t) => t?.wallet && Number(t?.usdValue || 0) > 0 && t?.title) || null;
-  } catch {
-    return null;
+export async function fetchJsonWithBackoff(
+  url,
+  {
+    headers = { "User-Agent": "PolyLensAutopilot/1.0", Accept: "application/json" },
+    timeoutMs = 8000,
+    maxRetries = 2,
+    baseDelayMs = 500,
+    fetchImpl = fetch,
+    sleepImpl = (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
+  } = {}
+) {
+  for (let attempt = 0; attempt <= maxRetries; attempt += 1) {
+    try {
+      const res = await fetchImpl(url, {
+        headers,
+        signal: AbortSignal.timeout(timeoutMs),
+      });
+      if (res.ok) return await res.json();
+      if (res.status !== 429 || attempt === maxRetries) return null;
+      const retryAfterRaw = res.headers?.get?.("retry-after");
+      const retryAfterSec = Number(retryAfterRaw);
+      const delayMs =
+        retryAfterRaw !== null &&
+        retryAfterRaw !== "" &&
+        Number.isFinite(retryAfterSec) &&
+        retryAfterSec >= 0 &&
+        retryAfterSec <= 5
+          ? retryAfterSec * 1000
+          : baseDelayMs * 2 ** attempt;
+      await sleepImpl(delayMs);
+    } catch {
+      return null;
+    }
   }
+  return null;
+}
+
+async function fetchTopWhaleTrade(baseUrl = DEFAULT_BASE_URL) {
+  const data = await fetchJsonWithBackoff(`${baseUrl}/api/whale-tape?minUsd=5000&sort=size`);
+  const trades = Array.isArray(data?.trades) ? data.trades : [];
+  return trades.find((t) => t?.wallet && Number(t?.usdValue || 0) > 0 && t?.title) || null;
 }
 
 async function fetchTopHlFunding(baseUrl = DEFAULT_BASE_URL) {
-  try {
-    const res = await fetch(`${baseUrl}/api/hyperliquid/funding`, {
-      headers: { "User-Agent": "PolyLensAutopilot/1.0", Accept: "application/json" },
-      signal: AbortSignal.timeout(8000),
-    });
-    if (!res.ok) return null;
-    const data = await res.json();
-    const markets = Array.isArray(data?.markets) ? data.markets : [];
-    return markets.find((m) => m?.symbol && Number.isFinite(Number(m?.aprPct))) || null;
-  } catch {
-    return null;
-  }
+  const data = await fetchJsonWithBackoff(`${baseUrl}/api/hyperliquid/funding`);
+  const markets = Array.isArray(data?.markets) ? data.markets : [];
+  return markets.find((m) => m?.symbol && Number.isFinite(Number(m?.aprPct))) || null;
 }
 
 export async function generateDailyXDrafts({ rootDir = ROOT_DIR, baseUrl = DEFAULT_BASE_URL } = {}) {
