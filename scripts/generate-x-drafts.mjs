@@ -38,6 +38,26 @@ export function hasPublishedOnDate(logData, dateStr, channel = "x") {
   );
 }
 
+export function hasRepliedToStatus(logData, targetStatusId, channel = "x-reply") {
+  const normalizedId = String(targetStatusId || "").trim();
+  if (!normalizedId) return false;
+  const entries = Array.isArray(logData?.entries) ? logData.entries : [];
+  return entries.some(
+    (entry) =>
+      (entry?.channel || "x") === channel &&
+      String(entry?.targetStatusId || "").trim() === normalizedId
+  );
+}
+
+export function countRepliesOnDate(logData, dateStr, channel = "x-reply") {
+  const normalizedDate = String(dateStr || "").trim();
+  if (!normalizedDate) return 0;
+  const entries = Array.isArray(logData?.entries) ? logData.entries : [];
+  return entries.filter(
+    (entry) => entry?.date === normalizedDate && (entry?.channel || "x") === channel
+  ).length;
+}
+
 export function buildXDrafts({
   dateStr = formatAuditDate(),
   topTrade = null,

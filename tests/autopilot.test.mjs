@@ -28,7 +28,9 @@ import { handleApiRequest } from "../src/core/handlers.js";
 import { getRecentMetrics } from "../src/core/replay-store.js";
 import {
   buildXDrafts,
+  countRepliesOnDate,
   hasPublishedOnDate,
+  hasRepliedToStatus,
   pickDailyAngle,
   renderDraftsMarkdown,
 } from "../scripts/generate-x-drafts.mjs";
@@ -316,6 +318,40 @@ test("daily angle rotation, hl-poly-macro draft, and ops/published-log.json dedu
   assert.equal(hasPublishedOnDate(logData, "2026-11-26", "x"), true);
   assert.equal(hasPublishedOnDate(logData, "2026-11-27", "x"), true);
   assert.equal(hasPublishedOnDate(logData, "2099-01-01", "x"), false);
+});
+
+test("hasRepliedToStatus and countRepliesOnDate enforce x-reply deduplication and daily cap", () => {
+  const logData = {
+    entries: [
+      {
+        date: "2026-11-27",
+        channel: "x",
+        url: "https://x.com/xujie19975555/status/2126201392314667141",
+      },
+      {
+        date: "2026-11-27",
+        channel: "x-reply",
+        targetStatusId: "2126000000000000001",
+      },
+      {
+        date: "2026-11-26",
+        channel: "x-reply",
+        targetStatusId: "2125000000000000002",
+      },
+    ],
+  };
+
+  assert.equal(hasRepliedToStatus(logData, "2126000000000000001"), true);
+  assert.equal(hasRepliedToStatus(logData, " 2126000000000000001 "), true);
+  assert.equal(hasRepliedToStatus(logData, "2126201392314667141"), false);
+  assert.equal(hasRepliedToStatus(logData, "9999999999999999999"), false);
+  assert.equal(hasRepliedToStatus(logData, ""), false);
+  assert.equal(hasRepliedToStatus(null, "2126000000000000001"), false);
+
+  assert.equal(countRepliesOnDate(logData, "2026-11-27"), 1);
+  assert.equal(countRepliesOnDate(logData, "2026-11-26"), 1);
+  assert.equal(countRepliesOnDate(logData, "2026-11-28"), 0);
+  assert.equal(countRepliesOnDate(null, "2026-11-27"), 0);
 });
 
 test("/api/health returns commitSha from env and null when unset", async () => {

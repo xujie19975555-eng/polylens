@@ -1,5 +1,10 @@
 # PolyLens Changelog
 
+## 2026-11-27 (Targeted X Q&A Interception & Autopilot Integration) — Strict Max-2/Day Deduplicated Replies
+- Added `hasRepliedToStatus` and `countRepliesOnDate` deduplication/cap helpers to `scripts/generate-x-drafts.mjs` plus unit tests in `tests/autopilot.test.mjs`.
+- Updated `ops/AUTOPILOT.md` Step 7 and `polylens-daily-autopilot/sidecar.json` (`args[4]`) to include daily max-2 targeted X Q&A interception (`channel: "x-reply"`, single-paragraph reply + 1 free link, `targetStatusId` deduplication in `ops/published-log.json`, zero forced replies when no genuine tax/Koinly/8949 questions exist, and `NEEDS_HUMAN` stop on CAPTCHA/auth issues).
+- Live X scan (`polymarket tax`, `polymarket koinly`, `polymarket taxes`, `polymarket 8949`) returned 0 genuine human Polymarket tax questions in the active window (`polymarket tax`/`taxes` dominated by political replies; `@fillbookio` skipped as competitor promo), so 0 live replies were posted today.
+
 ## 2026-11-27 (Autopilot Chrome MCP Fix & Draft Cleanups) — Unattended X Publishing + Clean `whale-tax` Copy
 - Switched `ops/AUTOPILOT.md` Step 7 and `polylens-daily-autopilot/sidecar.json` from the Hub-dependent `browser` subagent to `chrome-devtools` MCP (`mcp(chrome-devtools/*)` grants) so unattended 09:15 runs can publish directly via native Chrome without a Hub window.
 - Shortened `whale-tax` copy and padded reply-line URLs in `scripts/generate-x-drafts.mjs` to prevent mid-word clipping and Draft.js line-merge concatenation, plus updated unit assertions in `tests/autopilot.test.mjs`.
