@@ -1,0 +1,132 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Does Polymarket Issue a 1099-DA in 2026? IRS Tax Reporting FAQ — PolyLens</title>
+  <meta name="description" content="2026 Polymarket Form 1099-DA FAQ: why non-custodial Polygon CTF markets do not send a 1099-DA, how to avoid Coinbase off-ramp cost-basis traps, and how to export IRS Form 8949 / Koinly FIFO CSVs." />
+  <meta property="og:type" content="article" />
+  <meta property="og:url" content="https://polylens-zeta.vercel.app/polymarket-1099-da-faq" />
+  <meta property="og:title" content="Does Polymarket Issue a Form 1099-DA in 2026? Complete Trader FAQ" />
+  <meta property="og:description" content="Answers on IRS Form 1099-DA, non-custodial Polygon CTF cost basis, Form 8949 / Schedule D filing, and Koinly CSV exports for Polymarket traders." />
+  <meta property="og:image" content="https://polylens-zeta.vercel.app/og-card.png" />
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:image" content="https://polylens-zeta.vercel.app/og-card.png" />
+  <link rel="stylesheet" href="/style.css" />
+  <style>
+    .guide-wrap { max-width: 820px; margin: 0 auto; }
+    .guide-card { padding: 26px; margin-bottom: 18px; line-height: 1.7; }
+    .guide-card h2 { font-size: 1.25rem; margin: 0 0 12px; color: var(--text); }
+    .guide-card p { margin: 0 0 12px; color: var(--muted); }
+    .guide-card ul { margin: 0 0 12px; padding-left: 20px; color: var(--muted); }
+    .guide-card li { margin-bottom: 6px; }
+    .cta-row { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+  </style>
+  <script type="application/ld+json">
+  {
+    "@context": "https://schema.org",
+    "@type": "FAQPage",
+    "mainEntity": [
+      {
+        "@type": "Question",
+        "name": "Does Polymarket issue IRS Form 1099-DA, 1099-B, or 1099-MISC for 2026?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Onchain Polymarket markets settle non-custodially via Polygon Conditional Token Framework (CTF) smart contracts from your own or proxy wallet, so traders do not receive a consolidated brokerage 1099-DA/1099-B statement for onchain fills and must maintain their own FIFO cost-basis records."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "What happens if my centralized exchange issues a 1099-DA when I off-ramp Polymarket USDC winnings?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Centralized exchanges report gross proceeds on off-ramped USDC via 1099-DA without seeing your Polygon Conditional Token trade history. Reconstructing chronological FIFO lots from Polymarket /v2/activity gives you substantiated cost basis, proceeds, and $0 losing redemptions for Schedule D reconciliation."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "Are Polymarket gains and losses reported on IRS Form 8949 and Schedule D?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Most US crypto filers report ERC-1155 share disposals and redemptions on Form 8949 / Schedule D with per-lot acquiredDate ('Various' when aggregated), soldDate, proceeds, cost basis, and Short-Term vs. Long-Term classification, while separating liquidity rewards."
+        }
+      },
+      {
+        "@type": "Question",
+        "name": "How can I export a Koinly or Form 8949 FIFO CSV for my Polymarket wallet?",
+        "acceptedAnswer": {
+          "@type": "Answer",
+          "text": "Use PolyLens Tax Export (/tax-export) to preview your wallet's taxable events free, inspect zero-network sample CSVs (/api/tax-sample), and unlock Koinly, Form 8949, CoinLedger, Awaken, and detailed ledger CSVs for 7 USDC (single wallet) or 15 USDC (up to 5 wallets)."
+        }
+      }
+    ]
+  }
+  </script>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <header class="topbar">
+    <div class="container topbar-inner">
+      <a href="/" class="brand" style="text-decoration:none; color:inherit;">
+        <span class="brand-dot"></span>
+        <span class="brand-name">PolyLens</span>
+        <span class="brand-tag">1099-DA FAQ</span>
+      </a>
+      <nav class="nav-tabs">
+        <a href="/" class="nav-btn" style="text-decoration:none;">Wallet Audit</a>
+        <a href="/polymarket-tax-csv-koinly" class="nav-btn" style="text-decoration:none;">Koinly Guide</a>
+        <a href="/polymarket-form-8949-tax" class="nav-btn" style="text-decoration:none;">Form 8949 Guide</a>
+        <a href="/polymarket-tax-loss-harvesting" class="nav-btn" style="text-decoration:none;">Tax-Loss Harvesting</a>
+        <a href="/tax-export" class="nav-btn active" style="text-decoration:none;">2026 Tax CSV (7 USDC)</a>
+      </nav>
+    </div>
+  </header>
+
+  <main class="container" style="padding: 28px 0 56px;">
+    <div class="guide-wrap">
+      <div class="hero" style="text-align:left; margin-bottom: 24px;">
+        <div class="pill">IRS Form 1099-DA · Non-Custodial Polygon CTF · 2026 FIFO CSV</div>
+        <h1>Does <span class="gradient-text">Polymarket Issue a 1099-DA</span> in 2026? Tax Reporting FAQ</h1>
+        <p class="subtitle" style="margin: 10px 0 0; max-width: 100%;">
+          IRS Form 1099-DA goes live for custodial brokers in 2026. Here is how decentralized Polygon CTF trades interact with exchange 1099-DAs, Form 8949, and Koinly.
+        </p>
+        <div class="cta-row">
+          <a href="/tax-export" class="btn-primary" style="text-decoration:none;">Preview Taxable Events Free →</a>
+          <a href="/api/tax-sample?format=koinly" download="polylens-sample-koinly.csv" class="btn-secondary" style="text-decoration:none;">Sample Koinly CSV</a>
+          <a href="/api/tax-sample?format=form8949" download="polylens-sample-form8949.csv" class="btn-secondary" style="text-decoration:none;">Sample Form 8949 CSV</a>
+        </div>
+      </div>
+
+      <section class="card guide-card">
+        <h2>Q1. Does Polymarket issue Form 1099-DA, 1099-B, or 1099-MISC?</h2>
+        <p>
+          No consolidated 1099 brokerage statement is issued for non-custodial on-chain Polygon CTF trading. Unlike CFTC-regulated venues (<a href="/kalshi-vs-polymarket-tax" style="color:var(--accent-2);">Kalshi vs. Polymarket comparison</a>), on-chain trades settle directly against your proxy wallet smart contract, making self-reporting on Form 8949 / Schedule D your responsibility.
+        </p>
+      </section>
+
+      <section class="card guide-card">
+        <h2>Q2. What if Coinbase or Kraken sends a 1099-DA for my USDC off-ramp?</h2>
+        <p>
+          Custodial exchanges report gross proceeds when you sell bridged USDC back to USD, often with missing or incomplete cost basis from outside DeFi/Polygon contracts. Keeping an exact FIFO audit trail from Polymarket <code>/v2/activity</code> proves how much was original principal vs. net gain—and captures <strong>$0 losing redemptions</strong> you can claim before December 31 (<a href="/polymarket-tax-loss-harvesting" style="color:var(--accent-2);">tax-loss harvesting guide</a>).
+        </p>
+      </section>
+
+      <section class="card guide-card">
+        <h2>Q3. How do Koinly, CoinLedger, Awaken, and Form 8949 handle Polymarket?</h2>
+        <ul>
+          <li><strong>Why raw Polygon sync fails:</strong> Direct wallet syncs misclassify ERC-1155 shares, assign $0 cost basis to winning redemptions, and omit $0 losing expirations.</li>
+          <li><strong>PolyLens FIFO CSV fix:</strong> Chronologically matches every <code>BUY</code> lot per market outcome, preserves losing <code>REDEEM</code>s, separates liquidity <code>REWARD</code>s, and supports <strong>7 USDC</strong> single-wallet or <strong>15 USDC</strong> up-to-5-wallet bundle export (<a href="/polymarket-form-8949-tax" style="color:var(--accent-2);">Form 8949 setup</a> · <a href="/polymarket-tax-csv-koinly" style="color:var(--accent-2);">Koinly setup</a>).</li>
+        </ul>
+        <p class="small muted">
+          Disclaimer: PolyLens provides informational FIFO activity exports and is not tax, accounting, or legal advice.
+        </p>
+        <div class="cta-row">
+          <a href="/tax-export" class="btn-primary" style="text-decoration:none;">Scan Any Polymarket Wallet Free →</a>
+          <a href="/" class="btn-ghost" style="text-decoration:none;">Wallet PnL Audit</a>
+        </div>
+      </section>
+    </div>
+  </main>
+</body>
+</html>

@@ -7,6 +7,8 @@
     { "source": "/polymarket-tax-csv-koinly", "destination": "/polymarket-tax-csv-koinly.html" },
     { "source": "/polymarket-form-8949-tax", "destination": "/polymarket-form-8949-tax.html" },
     { "source": "/kalshi-vs-polymarket-tax", "destination": "/kalshi-vs-polymarket-tax.html" },
+    { "source": "/polymarket-tax-loss-harvesting", "destination": "/polymarket-tax-loss-harvesting.html" },
+    { "source": "/polymarket-1099-da-faq", "destination": "/polymarket-1099-da-faq.html" },
     { "source": "/api/(.*)", "destination": "/api/router" },
     { "source": "/.well-known/x402.json", "destination": "/api/router" }
   ]

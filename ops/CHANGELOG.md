@@ -1,5 +1,9 @@
 # PolyLens Changelog
 
+## 2026-11-27 (Year-End Tax-Loss Harvesting & 1099-DA FAQ SEO Pages) — Passive Search Seal
+- Shipped `/polymarket-tax-loss-harvesting` and `/polymarket-1099-da-faq` (with `FAQPage` JSON-LD schema), wired into `index.js`, `vercel.json`, `public/sitemap.xml`, and `public/llms.txt`.
+- Marked `polymarket-tax-loss-harvesting-seo` and `polymarket-1099-da-faq` as `done` in `ops/BACKLOG.json` and added offline SEO/FAQ schema verification tests in `tests/autopilot.test.mjs`.
+
 ## 2026-11-27 (Official X API v2 Auto-Publisher) — Hands-Off Compliant Daily Threads
 - Added zero-dependency `scripts/post-x-daily.mjs` signing OAuth 1.0a User Context requests to X Official API v2 (`POST https://api.x.com/2/tweets`) to publish the daily `Main Tweet` + `Self-Reply Tweet` without browser automation, persisting `mode: "api"` URLs (and partial main-only entries) into `ops/published-log.json`.
 - Wired `node --use-env-proxy .../scripts/post-x-daily.mjs` into `ops/AUTOPILOT.md` Step 7 and `polylens-daily-autopilot/sidecar.json` (17 grants; zero Chrome/social-UI automation) plus offline OAuth/publish unit tests in `tests/autopilot.test.mjs`.

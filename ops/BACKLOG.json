@@ -178,7 +178,7 @@
       "id": "polymarket-tax-loss-harvesting-seo",
       "title": "Publish Polymarket Tax-Loss Harvesting & Deductible Losses SEO guide",
       "priority": "P0",
-      "status": "ready",
+      "status": "done",
       "category": "seo",
       "ownerFiles": [
         "public/polymarket-tax-loss-harvesting.html",
@@ -194,7 +194,7 @@
       "id": "polymarket-1099-da-faq",
       "title": "Publish Polymarket 1099-DA FAQ SEO page",
       "priority": "P0",
-      "status": "ready",
+      "status": "done",
       "category": "seo",
       "ownerFiles": [
         "public/polymarket-1099-da-faq.html",
@@ -264,6 +264,34 @@
       ],
       "acceptanceCriteria": "GET /api/trader-card?address=0x... returns deterministic SVG trader card with PnL, rank, win rate, and tax-export CTA; Share on X links include wallet URL.",
       "revenueHypothesis": "Increases viral CTR on X when traders share their audited wallet PnL cards."
+    },
+    {
+      "id": "tax-csv-bundle-summary-txt",
+      "title": "Include CPA-ready methodology README summary in /api/tax-export response",
+      "priority": "P2",
+      "status": "ready",
+      "category": "product",
+      "ownerFiles": [
+        "src/core/handlers.js",
+        "public/tax-export.js",
+        "tests/v3-security-tax.test.mjs"
+      ],
+      "acceptanceCriteria": "Return a concise cpaSummaryTxt field summarizing wallets merged, FIFO rule, $0 losing redemption count, and total realized PnL for accountant handoff.",
+      "revenueHypothesis": "Makes accountant handoff seamless for multi-wallet buyers."
+    },
+    {
+      "id": "seo-internal-footer-crosslinks",
+      "title": "Add unified SEO guide footer cross-links across all tax landing pages",
+      "priority": "P2",
+      "status": "ready",
+      "category": "seo",
+      "ownerFiles": [
+        "public/polymarket-tax-csv-koinly.html",
+        "public/polymarket-form-8949-tax.html",
+        "public/kalshi-vs-polymarket-tax.html"
+      ],
+      "acceptanceCriteria": "Cross-link all 5 tax SEO pages consistently in page footers so Google and Bing discover every cluster page cleanly.",
+      "revenueHypothesis": "Strengthens internal PageRank across high-intent tax guides."
     },
     {
       "id": "custom-domain-dns-setup",

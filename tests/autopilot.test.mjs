@@ -568,6 +568,32 @@ test("post-x-daily OAuth 1.0a signing, markdown parsing, and publishDailyXThread
   }
 });
 
+test("tax-loss harvesting and 1099-DA FAQ SEO pages are wired into routes, sitemap, llms, and valid FAQ JSON-LD", () => {
+  const harvestingPath = path.join(ROOT_DIR, "public", "polymarket-tax-loss-harvesting.html");
+  const faqPath = path.join(ROOT_DIR, "public", "polymarket-1099-da-faq.html");
+  assert.ok(fs.existsSync(harvestingPath), "Missing polymarket-tax-loss-harvesting.html");
+  assert.ok(fs.existsSync(faqPath), "Missing polymarket-1099-da-faq.html");
+
+  const faqHtml = fs.readFileSync(faqPath, "utf8");
+  const ldMatch = faqHtml.match(/<script type="application\/ld\+json">([\s\S]*?)<\/script>/);
+  assert.ok(ldMatch, "Missing JSON-LD script in polymarket-1099-da-faq.html");
+  const faqSchema = JSON.parse(ldMatch[1]);
+  assert.equal(faqSchema["@type"], "FAQPage");
+  assert.ok(Array.isArray(faqSchema.mainEntity) && faqSchema.mainEntity.length >= 4);
+
+  const sitemap = fs.readFileSync(path.join(ROOT_DIR, "public", "sitemap.xml"), "utf8");
+  const llms = fs.readFileSync(path.join(ROOT_DIR, "public", "llms.txt"), "utf8");
+  const vercel = fs.readFileSync(path.join(ROOT_DIR, "vercel.json"), "utf8");
+  const serverIndex = fs.readFileSync(path.join(ROOT_DIR, "index.js"), "utf8");
+
+  for (const route of ["/polymarket-tax-loss-harvesting", "/polymarket-1099-da-faq"]) {
+    assert.ok(sitemap.includes(route), `Missing ${route} in sitemap.xml`);
+    assert.ok(llms.includes(route), `Missing ${route} in llms.txt`);
+    assert.ok(vercel.includes(route), `Missing ${route} in vercel.json`);
+    assert.ok(serverIndex.includes(route), `Missing ${route} in index.js`);
+  }
+});
+
 test("/api/health returns commitSha from env and null when unset", async () => {
   const withSha = await handleApiRequest({
     pathname: "/api/health",

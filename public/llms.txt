@@ -5,6 +5,9 @@
 > Koinly CSV Guide: https://polylens-zeta.vercel.app/polymarket-tax-csv-koinly
 > IRS Form 8949 Tax Guide: https://polylens-zeta.vercel.app/polymarket-form-8949-tax
 > Kalshi vs Polymarket Tax Guide: https://polylens-zeta.vercel.app/kalshi-vs-polymarket-tax
+> Tax-Loss Harvesting Guide: https://polylens-zeta.vercel.app/polymarket-tax-loss-harvesting
+> Form 1099-DA FAQ: https://polylens-zeta.vercel.app/polymarket-1099-da-faq
+> Pricing: 7 USDC (1 wallet) / 15 USDC (up to 5 wallets bundle)
 > MCP Server (Free): npx -y polylens-mcp
 > Telegram Bot (Free): https://t.me/polylens_alerts_bot
 > Treasury (Base & Polygon USDC): 0xcC52589F7F1E8b95101e8454CeAA3742533f7FF6
