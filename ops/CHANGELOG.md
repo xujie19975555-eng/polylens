@@ -1,5 +1,18 @@
 # PolyLens Changelog
 
+## 2026-11-27 — v3.5.0 Multi-Wallet Bundle FIFO Tax Export (Up to 5 Wallets, 15 USDC)
+- **Multi-Wallet FIFO Merging (`src/core/tax-fifo.js`, `src/core/config.js`, `src/core/handlers.js`):**
+  - Added `PRICING.taxBundleUsdc` (`15` USDC / `15_000_000n`) and `PRICING.maxBundleWallets` (`5`) while keeping single-wallet pricing at `7` USDC.
+  - Added `parseTaxWallets` and `normalizeAddressList` supporting 1–5 comma-separated EOA/proxy addresses on `/api/tax-preview` and `/api/tax-export` (400 `too_many_wallets` / `invalid_address` on invalid inputs).
+  - Updated `buildFifoTaxReport` to resolve all `/public-profile` proxy addresses, deduplicate shared `proxyWallet`s before fetching `/v2/activity`, and merge chronological FIFO lots across all addresses.
+  - Enforced `15_000_000n` payment verification and canonical sorted-address `scopeKey` (`tax-export:<sorted_addrs>:<year>`) anti-replay protection in `/api/tax-export`.
+- **Tax Export UI (`public/tax-export.html`, `public/tax-export.js`):**
+  - Updated wallet input, validation, dynamic `7 USDC` vs `15 USDC` paywall/wallet-transfer logic, and `bundle-<N>w` CSV download filenames.
+- **Tests & Ops (`tests/v3-security-tax.test.mjs`, `ops/BACKLOG.json`, `ops/reviews/2026-11-27.md`, `ops/drafts/2026-11-27.md`):**
+  - Added offline unit tests for cross-wallet FIFO lot merging, shared `proxyWallet` deduplication, >5 wallet rejection, `15 USDC` bundle enforcement, and order-independent replay protection (`46/46` tests passing).
+  - Verified live Vercel deployment with `scripts/verify-live.mjs` (`9/9` passed) plus live bundle `402` (`priceUsdc: 15`).
+  - Generated `ops/drafts/2026-11-27.md`; X publishing logged `NEEDS_HUMAN` (`BROWSER_UNAVAILABLE`: conversation not open in a Hub window).
+
 ## 2026-11-26 — v3.4.0 Full Closed-Loop Daily Autopilot Distribution & Proxy Support
 - **Deduplicated Daily X / Weekly Reddit Autopilot (`ops/AUTOPILOT.md`, `ops/published-log.json`, `polylens-daily-autopilot/sidecar.json`):**
   - Created `ops/published-log.json` seeded with `2026-11-26` X (`@xujie19975555`) and Reddit (`r/Polymarket` megathread) entries to prevent double posting.
