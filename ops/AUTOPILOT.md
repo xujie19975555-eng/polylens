@@ -43,12 +43,15 @@ This document defines the zero-human daily review and engineering loop for PolyL
      ```
    - Confirm exit code `0` (all routes HTTP 200, `/api/metrics` backend `"redis"`, `/api/tax-sample` CSV headers valid, unpaid `/api/tax-export` HTTP 402).
 
-7. **Draft-only Distribution & Search-Index Q&A Queue (Zero Direct X/Reddit Automation)**
-   - **Hard Compliance Rule:** Make **0 automated requests to `x.com` or `reddit.com`** (no Chrome MCP, no web-UI posting or search scripts). All social publishing is `draft_only` / manual by the owner to eliminate X `429`, Reddit `403`, and ToS ban risk.
-   - **Daily X & Monday Batch Drafts (`ops/drafts/YYYY-MM-DD.md`):**
-     - `scripts/generate-x-drafts.mjs` generates today's `Main Tweet` + `Self-Reply Tweet` (using polite `HTTP 429` exponential backoff max 2 retries on Polymarket/Hyperliquid public APIs).
-     - On Mondays (`UTC+8`), also include 3–5 ready-to-schedule drafts in `ops/drafts/YYYY-MM-DD.md` so the owner can queue them via X's native scheduler in ~2 minutes.
-     - Whenever the owner reports manually posted X/Reddit URLs, append them to `ops/published-log.json` with `"mode": "manual"` and deduplicate against future queues.
+7. **Official API X Auto-Publishing & Search-Index Q&A Queue (Zero Browser Automation)**
+   - **Hard Compliance Rule:** Make **0 automated browser requests to `x.com` or `reddit.com`** (no Chrome MCP, no web-UI posting or search scripts).
+   - **Daily X Official API (`@xujie19975555`, max 1 thread/day, 0 browser):**
+     - Run:
+       ```bash
+       node --use-env-proxy /Users/xujie/.gemini/antigravity/scratch/polylens/scripts/post-x-daily.mjs
+       ```
+     - The script dedupes against `ops/published-log.json`, posts `Main Tweet` + `Self-Reply Tweet` via X Official API v2 Free Tier (`POST https://api.x.com/2/tweets`, 500 posts/month free) using OAuth 1.0a env keys from `.env`, and records `mode: "api"` URLs in `ops/published-log.json`.
+     - If `status === "unconfigured"` (missing `X_API_KEY` / `X_ACCESS_TOKEN*`), log `NEEDS_HUMAN` in `ops/reviews/YYYY-MM-DD.md`; on `HTTP 429`, stop cleanly for the day without retrying.
    - **Search-Index Q&A Discovery Queue (`search_web` only):**
      - Run at most **4** `search_web` queries/day before Dec 31 (and at most **8**/day Jan–Apr) targeting `site:reddit.com/r/CryptoTax polymarket`, `site:reddit.com/r/tax polymarket`, `site:reddit.com/r/Polymarket (tax OR koinly OR 8949 OR csv)`, and `site:discuss.koinly.io polymarket`.
      - On any search error, stop discovery for the day (no retries).

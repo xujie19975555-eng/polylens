@@ -1,5 +1,9 @@
 # PolyLens Changelog
 
+## 2026-11-27 (Official X API v2 Auto-Publisher) — Hands-Off Compliant Daily Threads
+- Added zero-dependency `scripts/post-x-daily.mjs` signing OAuth 1.0a User Context requests to X Official API v2 (`POST https://api.x.com/2/tweets`) to publish the daily `Main Tweet` + `Self-Reply Tweet` without browser automation, persisting `mode: "api"` URLs (and partial main-only entries) into `ops/published-log.json`.
+- Wired `node --use-env-proxy .../scripts/post-x-daily.mjs` into `ops/AUTOPILOT.md` Step 7 and `polylens-daily-autopilot/sidecar.json` (17 grants; zero Chrome/social-UI automation) plus offline OAuth/publish unit tests in `tests/autopilot.test.mjs`.
+
 ## 2026-11-27 (Draft-Only Compliant Distribution & Backlog Reprioritization) — Zero X/Reddit Automation
 - Switched Autopilot Step 7 (`ops/AUTOPILOT.md`) and `polylens-daily-autopilot/sidecar.json` strictly to `draft_only` distribution + Google-index `search_web` Q&A Queue (0 automated requests to `x.com` or `reddit.com`; removed all `chrome-devtools/*`, `x.com`, and `reddit.com` access grants from `sidecar.json`).
 - Added polite `HTTP 429` exponential-backoff helper `fetchJsonWithBackoff` (max 2 retries) and `## Q&A Queue (Manual Reply Drafts)` rendering in `scripts/generate-x-drafts.mjs`, with offline unit tests in `tests/autopilot.test.mjs`.

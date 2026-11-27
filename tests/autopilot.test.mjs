@@ -36,6 +36,12 @@ import {
   pickDailyAngle,
   renderDraftsMarkdown,
 } from "../scripts/generate-x-drafts.mjs";
+import {
+  buildOAuth1Header,
+  parseDraftMarkdown,
+  publishDailyXThread,
+  rfc3986Encode,
+} from "../scripts/post-x-daily.mjs";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ROOT_DIR = path.resolve(__dirname, "..");
@@ -427,6 +433,139 @@ test("fetchJsonWithBackoff retries 429s cleanly and renderDraftsMarkdown include
   });
   assert.ok(populatedMd.includes("https://www.reddit.com/r/CryptoTax/comments/abc123/polymarket/"));
   assert.ok(populatedMd.includes("Draft Reply:"));
+});
+
+test("post-x-daily OAuth 1.0a signing, markdown parsing, and publishDailyXThread workflows work offline", async () => {
+  assert.equal(rfc3986Encode("a!b'c(d)*e "), "a%21b%27c%28d%29%2Ae%20");
+
+  const auth1 = buildOAuth1Header({
+    method: "POST",
+    url: "https://api.x.com/2/tweets",
+    apiKey: "ck",
+    apiSecret: "cs",
+    accessToken: "at",
+    accessTokenSecret: "as",
+    nonce: "nonce123",
+    timestamp: "1700000000",
+  });
+  const auth2 = buildOAuth1Header({
+    method: "POST",
+    url: "https://api.x.com/2/tweets",
+    apiKey: "ck",
+    apiSecret: "cs",
+    accessToken: "at",
+    accessTokenSecret: "as",
+    nonce: "nonce123",
+    timestamp: "1700000000",
+  });
+  assert.equal(auth1, auth2);
+  assert.ok(auth1.startsWith("OAuth "));
+  assert.ok(auth1.includes('oauth_signature_method="HMAC-SHA1"'));
+  assert.ok(auth1.includes('oauth_signature="'));
+
+  const sampleMd = renderDraftsMarkdown(buildXDrafts({ dateStr: "2026-11-28", topTrade: null }));
+  const parsed = parseDraftMarkdown(sampleMd);
+  assert.equal(parsed.angle, "tax-proof");
+  assert.ok(parsed.mainTweet.includes("Koinly"));
+  assert.ok(parsed.replyTweet.includes("https://polylens-zeta.vercel.app/tax-export"));
+
+  const tmpRoot = fs.mkdtempSync(path.join(os.tmpdir(), "polylens-xpub-"));
+  try {
+    fs.mkdirSync(path.join(tmpRoot, "ops", "drafts"), { recursive: true });
+    fs.writeFileSync(path.join(tmpRoot, "ops", "drafts", "2026-11-28.md"), sampleMd, "utf8");
+    fs.writeFileSync(path.join(tmpRoot, "ops", "published-log.json"), JSON.stringify({ entries: [] }), "utf8");
+
+    let calls = 0;
+    const missingRes = await publishDailyXThread({
+      rootDir: tmpRoot,
+      dateStr: "2026-11-28",
+      env: {},
+      fetchImpl: async () => {
+        calls += 1;
+        return new Response("unexpected");
+      },
+    });
+    assert.equal(missingRes.status, "unconfigured");
+    assert.equal(missingRes.needsHuman, true);
+    assert.equal(calls, 0);
+
+    const credsEnv = {
+      X_API_KEY: "k",
+      X_API_SECRET: "s",
+      X_ACCESS_TOKEN: "t",
+      X_ACCESS_TOKEN_SECRET: "ts",
+      X_HANDLE: "@xujie19975555",
+    };
+
+    const dryRes = await publishDailyXThread({
+      rootDir: tmpRoot,
+      dateStr: "2026-11-28",
+      env: credsEnv,
+      dryRun: true,
+      fetchImpl: async () => {
+        calls += 1;
+        return new Response("unexpected");
+      },
+    });
+    assert.equal(dryRes.status, "dry_run");
+    assert.equal(calls, 0);
+
+    const sentPayloads = [];
+    const pubRes = await publishDailyXThread({
+      rootDir: tmpRoot,
+      dateStr: "2026-11-28",
+      env: credsEnv,
+      fetchImpl: async (_url, init) => {
+        const body = JSON.parse(init.body);
+        sentPayloads.push({ body, auth: init.headers.Authorization });
+        const id = sentPayloads.length === 1 ? "9001" : "9002";
+        return new Response(JSON.stringify({ data: { id, text: body.text } }), { status: 201 });
+      },
+    });
+    assert.equal(pubRes.status, "published");
+    assert.equal(pubRes.url, "https://x.com/xujie19975555/status/9001");
+    assert.equal(pubRes.replyUrl, "https://x.com/xujie19975555/status/9002");
+    assert.equal(sentPayloads.length, 2);
+    assert.equal(sentPayloads[1].body.reply.in_reply_to_tweet_id, "9001");
+    assert.ok(sentPayloads[0].auth.startsWith("OAuth "));
+
+    const logAfter = JSON.parse(fs.readFileSync(path.join(tmpRoot, "ops", "published-log.json"), "utf8"));
+    assert.equal(logAfter.entries.length, 1);
+    assert.equal(logAfter.entries[0].mode, "api");
+
+    const skipRes = await publishDailyXThread({
+      rootDir: tmpRoot,
+      dateStr: "2026-11-28",
+      env: credsEnv,
+      fetchImpl: async () => {
+        throw new Error("should not fetch when already published");
+      },
+    });
+    assert.equal(skipRes.status, "skipped_already_published");
+
+    // Partial failure (main succeeds, reply returns 429) must still log mainUrl to prevent double-post
+    fs.writeFileSync(path.join(tmpRoot, "ops", "drafts", "2026-11-29.md"), sampleMd, "utf8");
+    let partialCount = 0;
+    const partialRes = await publishDailyXThread({
+      rootDir: tmpRoot,
+      dateStr: "2026-11-29",
+      env: credsEnv,
+      fetchImpl: async () => {
+        partialCount += 1;
+        if (partialCount === 1) {
+          return new Response(JSON.stringify({ data: { id: "9003", text: "main" } }), { status: 201 });
+        }
+        return new Response("Too Many Requests", { status: 429 });
+      },
+    });
+    assert.equal(partialRes.status, "partial_main_only");
+    assert.equal(partialRes.url, "https://x.com/xujie19975555/status/9003");
+    const logAfterPartial = JSON.parse(fs.readFileSync(path.join(tmpRoot, "ops", "published-log.json"), "utf8"));
+    assert.equal(logAfterPartial.entries.length, 2);
+    assert.equal(logAfterPartial.entries[1].replyUrl, null);
+  } finally {
+    fs.rmSync(tmpRoot, { recursive: true, force: true });
+  }
 });
 
 test("/api/health returns commitSha from env and null when unset", async () => {
