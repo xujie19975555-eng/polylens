@@ -1,5 +1,16 @@
 # PolyLens Changelog
 
+## 2026-11-28 — v3.6.0 TurboTax Desktop TXF (V042) Export & Sample
+- **TurboTax TXF Engine (`src/core/tax-fifo.js`, `src/core/handlers.js`):**
+  - Exported `buildTurboTaxTxf` emitting V042 TXF capital-gain/loss records (`N711`/`N713` for Form 8949 basis not reported to IRS by default, or `N321`/`N323` when `basisReported: true`), placing cost basis before proceeds, formatting `DVarious` for multi-lot sales, preserving `$0.00` losing redemptions, excluding ordinary-income `REWARD`/rebates, and sanitizing `^`/newlines.
+  - Exposed `txfExport` in `buildFifoTaxReport(..., { full: true })` and `/api/tax-export`, plus zero-network `GET /api/tax-sample?format=txf` (`polylens-sample-turbotax.txf`).
+- **Tax Export UI & Tests (`public/tax-export.html`, `public/tax-export.js`, `tests/v3-security-tax.test.mjs`):**
+  - Added `Sample TurboTax TXF` link and unlocked `TurboTax TXF` download button (`polylens-turbotax-<year>-<suffix>.txf`), plus offline unit tests (`56/56` passing).
+- **Live Verification & Distribution (`ops/BACKLOG.json`, `ops/reviews/2026-11-28.md`):**
+  - Shipped commit `d3ce3e4` to `origin main`, verified `verify-live.mjs --expect-head` (`9/9` passed) and live `/api/tax-sample?format=txf` (`200`).
+  - Marked `turbotax-txf-export` as `done` and added `polymarket-turbotax-txf-seo` (`ready`) in `ops/BACKLOG.json`.
+  - `post-x-daily.mjs` returned X API `HTTP 402` (`credits depleted`, logged `NEEDS_HUMAN`); 4 bounded Google-index `search_web` Q&A queries returned only opaque redirect summaries with 0 verifiable post IDs (`Q&A Queue: None today.`).
+
 ## 2026-11-27 (Year-End Tax-Loss Harvesting & 1099-DA FAQ SEO Pages) — Passive Search Seal
 - Shipped `/polymarket-tax-loss-harvesting` and `/polymarket-1099-da-faq` (with `FAQPage` JSON-LD schema), wired into `index.js`, `vercel.json`, `public/sitemap.xml`, and `public/llms.txt`.
 - Marked `polymarket-tax-loss-harvesting-seo` and `polymarket-1099-da-faq` as `done` in `ops/BACKLOG.json` and added offline SEO/FAQ schema verification tests in `tests/autopilot.test.mjs`.
