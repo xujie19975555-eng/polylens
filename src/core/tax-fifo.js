@@ -317,6 +317,16 @@ export function buildDetailedLedgerCsv(events) {
 
 const ORDINARY_INCOME_KINDS = new Set(["REWARD", "MAKER_REBATE", "TAKER_REBATE"]);
 
+function formatDisposalDescription(ev) {
+  const kind = String(ev?.kind || "").toUpperCase();
+  const sharesNum = Number(ev?.shares || 0);
+  const shareLabel = Number.isFinite(sharesNum) && sharesNum > 0
+    ? `${sharesNum.toFixed(4).replace(/\.?0+$/, "")} sh `
+    : "";
+  const outcomeLabel = ev?.outcome && ev.outcome !== "-" ? ` (${ev.outcome})` : "";
+  return `${shareLabel}${ev?.title || "Polymarket Position"}${outcomeLabel} [${kind || "TRADE"}]`;
+}
+
 export function buildForm8949Csv(events) {
   const headers = [
     "Description of Property",
@@ -335,13 +345,7 @@ export function buildForm8949Csv(events) {
     const kind = String(ev?.kind || "").toUpperCase();
     if (ORDINARY_INCOME_KINDS.has(kind)) continue;
 
-    const sharesNum = Number(ev?.shares || 0);
-    const shareLabel = Number.isFinite(sharesNum) && sharesNum > 0
-      ? `${sharesNum.toFixed(4).replace(/\.?0+$/, "")} sh `
-      : "";
-    const outcomeLabel = ev?.outcome && ev.outcome !== "-" ? ` (${ev.outcome})` : "";
-    const description = `${shareLabel}${ev?.title || "Polymarket Position"}${outcomeLabel} [${kind || "TRADE"}]`;
-
+    const description = formatDisposalDescription(ev);
     const proceeds = Number(ev?.proceedsUsdc || 0);
     const costBasis = Number(ev?.costBasisUsdc || 0);
     const rawGainLoss = Number(ev?.realizedPnlUsdc ?? proceeds - costBasis);
@@ -362,6 +366,64 @@ export function buildForm8949Csv(events) {
       ]
         .map(csvEsc)
         .join(",")
+    );
+  }
+  return lines.join("\n");
+}
+
+function toTxfDate(isoDate) {
+  const s = String(isoDate || "").trim();
+  if (!s || s === "Unknown") return "";
+  if (s === "Various") return "Various";
+  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+  if (m) return `${m[2]}/${m[3]}/${m[1]}`;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(s)) return s;
+  return "";
+}
+
+/**
+ * Build a TurboTax Desktop TXF (Tax Exchange Format v042) payload for capital disposals.
+ * Uses TXF codes 711/713 (Form 8949 basis not reported to IRS) by default, or 321/323 when basisReported=true.
+ */
+export function buildTurboTaxTxf(events, { basisReported = false, exportDate = null } = {}) {
+  const headerDate =
+    toTxfDate(exportDate) || toTxfDate(new Date().toISOString().slice(0, 10));
+  const lines = ["V042", "APolyLens", `D${headerDate}`, "^"];
+
+  for (const ev of events || []) {
+    const kind = String(ev?.kind || "").toUpperCase();
+    if (ORDINARY_INCOME_KINDS.has(kind)) continue;
+
+    const isLongTerm = ev?.holdingTerm === "Long-Term";
+    const code = basisReported
+      ? isLongTerm
+        ? "323"
+        : "321"
+      : isLongTerm
+      ? "713"
+      : "711";
+
+    const desc = formatDisposalDescription(ev)
+      .replace(/[\r\n^]+/g, " ")
+      .replace(/\s+/g, " ")
+      .trim()
+      .slice(0, 120);
+    const acqDate = toTxfDate(ev?.acquiredDate || "Unknown");
+    const soldDate = toTxfDate(ev?.soldDate || ev?.date || "");
+    const costBasis = Number(ev?.costBasisUsdc || 0);
+    const proceeds = Number(ev?.proceedsUsdc || 0);
+
+    lines.push(
+      "TD",
+      `N${code}`,
+      "C1",
+      "L1",
+      `P${desc}`,
+      `D${acqDate}`,
+      `D${soldDate}`,
+      `$${costBasis.toFixed(2)}`,
+      `$${proceeds.toFixed(2)}`,
+      "^"
     );
   }
   return lines.join("\n");
@@ -579,5 +641,6 @@ export async function buildFifoTaxReport(addressOrAddresses, { year = "2026", fu
     form8949Csv: buildForm8949Csv(ledger.events),
     coinledgerCsv: buildCoinLedgerCsv(ledger.events),
     awakenCsv: buildAwakenCsv(ledger.events),
+    txfExport: buildTurboTaxTxf(ledger.events),
   };
 }

@@ -212,6 +212,10 @@ function renderTax(data) {
     if (awakenBtn) {
       awakenBtn.classList.toggle("hidden", !data.awakenCsv);
     }
+    const txfBtn = $("tax-download-txf-btn");
+    if (txfBtn) {
+      txfBtn.classList.toggle("hidden", !data.txfExport);
+    }
     if (data.paymentVerified) {
       $("tax-tx-info").textContent = ` · Verified ${data.paymentVerified.amountUsdc} ${data.paymentVerified.tokenSymbol} on ${data.paymentVerified.chainName}`;
     }
@@ -348,8 +352,8 @@ $("tax-copy-btn").addEventListener("click", async () => {
   setTimeout(() => ($("tax-copy-btn").textContent = "Copy"), 1500);
 });
 
-function downloadCsv(csvText, filename) {
-  const blob = new Blob([csvText], { type: "text/csv;charset=utf-8;" });
+function downloadFile(content, filename, mimeType = "text/csv;charset=utf-8;") {
+  const blob = new Blob([content], { type: mimeType });
   const url = URL.createObjectURL(blob);
   const a = document.createElement("a");
   a.href = url;
@@ -365,27 +369,32 @@ function csvSuffix() {
 
 $("tax-download-koinly-btn").addEventListener("click", () => {
   if (!currentTax?.koinlyCsv) return;
-  downloadCsv(currentTax.koinlyCsv, `polylens-koinly-${currentTax.year}-${csvSuffix()}.csv`);
+  downloadFile(currentTax.koinlyCsv, `polylens-koinly-${currentTax.year}-${csvSuffix()}.csv`);
 });
 
 $("tax-download-form8949-btn")?.addEventListener("click", () => {
   if (!currentTax?.form8949Csv) return;
-  downloadCsv(currentTax.form8949Csv, `polylens-form8949-${currentTax.year}-${csvSuffix()}.csv`);
+  downloadFile(currentTax.form8949Csv, `polylens-form8949-${currentTax.year}-${csvSuffix()}.csv`);
 });
 
 $("tax-download-coinledger-btn")?.addEventListener("click", () => {
   if (!currentTax?.coinledgerCsv) return;
-  downloadCsv(currentTax.coinledgerCsv, `polylens-coinledger-${currentTax.year}-${csvSuffix()}.csv`);
+  downloadFile(currentTax.coinledgerCsv, `polylens-coinledger-${currentTax.year}-${csvSuffix()}.csv`);
 });
 
 $("tax-download-awaken-btn")?.addEventListener("click", () => {
   if (!currentTax?.awakenCsv) return;
-  downloadCsv(currentTax.awakenCsv, `polylens-awaken-${currentTax.year}-${csvSuffix()}.csv`);
+  downloadFile(currentTax.awakenCsv, `polylens-awaken-${currentTax.year}-${csvSuffix()}.csv`);
+});
+
+$("tax-download-txf-btn")?.addEventListener("click", () => {
+  if (!currentTax?.txfExport) return;
+  downloadFile(currentTax.txfExport, `polylens-turbotax-${currentTax.year}-${csvSuffix()}.txf`, "text/plain;charset=utf-8;");
 });
 
 $("tax-download-detail-btn").addEventListener("click", () => {
   if (!currentTax?.detailedCsv) return;
-  downloadCsv(currentTax.detailedCsv, `polylens-ledger-${currentTax.year}-${csvSuffix()}.csv`);
+  downloadFile(currentTax.detailedCsv, `polylens-ledger-${currentTax.year}-${csvSuffix()}.csv`);
 });
 
 $("tax-print-btn").addEventListener("click", () => window.print());

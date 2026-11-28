@@ -70,6 +70,7 @@
           <a href="/api/tax-sample?format=form8949" download="polylens-sample-form8949.csv" class="btn-secondary">Sample Form 8949 CSV</a>
           <a href="/api/tax-sample?format=coinledger" download="polylens-sample-coinledger.csv" class="btn-secondary">Sample CoinLedger CSV</a>
           <a href="/api/tax-sample?format=awaken" download="polylens-sample-awaken.csv" class="btn-secondary">Sample Awaken CSV</a>
+          <a href="/api/tax-sample?format=txf" download="polylens-sample-turbotax.txf" class="btn-secondary">Sample TurboTax TXF</a>
         </div>
         <p class="small muted" style="margin: 8px 0 0;">
           Inspect exact CSV columns free before paying 7 USDC · Guides:
@@ -157,6 +158,7 @@
             <li><strong>Koinly CSV</strong> using official <code>Koinly Date, Amount, Currency, Label (realized gain)</code> format so losses offset gains</li>
             <li><strong>IRS Form 8949 CSV</strong> with <code>Date Acquired</code> (<code>Various</code> for multi-lot), <code>Short-Term</code> / <code>Long-Term</code>, and $0-proceeds losing redemptions</li>
             <li><strong>CoinLedger &amp; Awaken Tax CSVs</strong> formatted with exact platform headers &amp; preserved losses</li>
+            <li><strong>TurboTax Desktop TXF (V042)</strong> with Form 8949 codes (<code>N711</code>/<code>N713</code>) for direct desktop import</li>
             <li><strong>Full Accountant CSV</strong> with Shares, FIFO Cost Basis, Proceeds, Realized PnL &amp; Polygonscan TxHashes</li>
           </ul>
           <p class="muted small" style="margin-top:10px;">
@@ -193,6 +195,7 @@
           <button id="tax-download-form8949-btn" class="btn-secondary">Download IRS Form 8949 CSV</button>
           <button id="tax-download-coinledger-btn" class="btn-secondary">CoinLedger CSV</button>
           <button id="tax-download-awaken-btn" class="btn-secondary">Awaken CSV</button>
+          <button id="tax-download-txf-btn" class="btn-secondary">TurboTax TXF</button>
           <button id="tax-download-detail-btn" class="btn-secondary">Accountant CSV</button>
           <button id="tax-print-btn" class="btn-ghost">Print / PDF</button>
         </div>

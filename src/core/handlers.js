@@ -18,6 +18,7 @@ import {
   buildFifoTaxReport,
   buildForm8949Csv,
   buildKoinlyCsv,
+  buildTurboTaxTxf,
   computeFifoTaxLedger,
 } from "./tax-fifo.js";
 import {
@@ -160,8 +161,8 @@ function buildTaxSampleCsv(format) {
     },
   ];
 
-  if (format === "form8949") {
-    // Add a 4th capital disposal (Long-Term >365d) so Form 8949 sample yields 4 capital disposal rows
+  if (format === "form8949" || format === "txf") {
+    // Add a 4th capital disposal (Long-Term >365d) so Form 8949 / TXF samples yield 4 capital disposal rows
     // after excluding the REWARD row.
     baseEvents.push(
       {
@@ -193,6 +194,7 @@ function buildTaxSampleCsv(format) {
   if (format === "form8949") return buildForm8949Csv(ledger.events);
   if (format === "coinledger") return buildCoinLedgerCsv(ledger.events);
   if (format === "awaken") return buildAwakenCsv(ledger.events);
+  if (format === "txf") return buildTurboTaxTxf(ledger.events);
   return buildKoinlyCsv(ledger.events);
 }
 
@@ -269,16 +271,16 @@ export async function handleApiRequest({
             description: "Free /v2/activity FIFO taxable event count & direction preview (1–5 comma-separated wallets)",
           },
           {
-            path: "/api/tax-sample?format=koinly|form8949|coinledger|awaken",
+            path: "/api/tax-sample?format=koinly|form8949|coinledger|awaken|txf",
             priceUsdc: 0,
-            description: "Free deterministic 4-row sample CSV (Koinly, IRS Form 8949, CoinLedger, or Awaken)",
+            description: "Free deterministic 4-row sample (Koinly, IRS Form 8949, CoinLedger, Awaken CSV, or TurboTax TXF)",
           },
           {
             path: "/api/tax-export?address=0x...&year=2026&tx=0x...",
             priceUsdc: PRICING.taxExportUsdc,
             bundlePriceUsdc: PRICING.taxBundleUsdc,
             maxBundleWallets: PRICING.maxBundleWallets,
-            description: "Full 2026 Polymarket FIFO Koinly, IRS Form 8949, CoinLedger, Awaken & detailed accountant CSVs (7 USDC single / 15 USDC up to 5 wallets, replay-protected)",
+            description: "Full 2026 Polymarket FIFO Koinly, IRS Form 8949, CoinLedger, Awaken, TurboTax TXF & detailed accountant exports (7 USDC single / 15 USDC up to 5 wallets, replay-protected)",
           },
         ],
       });
@@ -345,17 +347,20 @@ export async function handleApiRequest({
 
     if (pathname === "/api/tax-sample") {
       const rawFormat = String(searchParams.get("format") || "koinly").trim().toLowerCase();
-      const format = ["form8949", "coinledger", "awaken"].includes(rawFormat) ? rawFormat : "koinly";
-      const csv = buildTaxSampleCsv(format);
+      const format = ["form8949", "coinledger", "awaken", "txf"].includes(rawFormat) ? rawFormat : "koinly";
+      const payload = buildTaxSampleCsv(format);
+      const isTxf = format === "txf";
       return {
         status: 200,
         headers: {
-          "Content-Type": "text/csv; charset=utf-8",
-          "Content-Disposition": `attachment; filename="polylens-sample-${format}.csv"`,
+          "Content-Type": isTxf ? "text/plain; charset=utf-8" : "text/csv; charset=utf-8",
+          "Content-Disposition": isTxf
+            ? 'attachment; filename="polylens-sample-turbotax.txf"'
+            : `attachment; filename="polylens-sample-${format}.csv"`,
           "Access-Control-Allow-Origin": "*",
           "Cache-Control": "public, max-age=300",
         },
-        body: csv,
+        body: payload,
       };
     }
 

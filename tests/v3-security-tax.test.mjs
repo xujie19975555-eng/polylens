@@ -13,6 +13,7 @@ import {
   buildForm8949Csv,
   buildCoinLedgerCsv,
   buildAwakenCsv,
+  buildTurboTaxTxf,
   buildFifoTaxReport,
 } from "../src/core/tax-fifo.js";
 
@@ -385,6 +386,8 @@ test("buildFifoTaxReport full:true and /api/tax-export include form8949Csv along
     assert.equal(body.form8949Csv, report.form8949Csv);
     assert.equal(body.coinledgerCsv, report.coinledgerCsv);
     assert.equal(body.awakenCsv, report.awakenCsv);
+    assert.equal(body.txfExport, report.txfExport);
+    assert.ok(typeof body.txfExport === "string" && body.txfExport.startsWith("V042\n"));
   } finally {
     globalThis.fetch = prevFetch;
   }
@@ -615,4 +618,86 @@ test("/api/tax-preview and /api/tax-export enforce max 5 wallets, 15 USDC bundle
   });
   assert.equal(r3.status, 402);
   assert.equal(JSON.parse(r3.body).error, "tx_already_used");
+});
+
+test("buildTurboTaxTxf emits valid V042 records with codes 711/713 and 321/323, cost-before-proceeds, and sanitization", () => {
+  const tBuy2025 = Date.UTC(2025, 0, 10, 10, 0, 0) / 1000;
+  const tBuy2026a = Date.UTC(2026, 0, 5, 10, 0, 0) / 1000;
+  const tBuy2026b = Date.UTC(2026, 0, 8, 10, 0, 0) / 1000;
+  const tSellMulti = Date.UTC(2026, 1, 14, 15, 0, 0) / 1000;
+  const tRedeemLoss = Date.UTC(2026, 2, 19, 19, 0, 0) / 1000;
+  const tSellLt = Date.UTC(2026, 4, 10, 12, 0, 0) / 1000;
+
+  const ledger = computeFifoTaxLedger(
+    [
+      // Long-term (>365d)
+      { type: "TRADE", side: "BUY", token_id: "LT", size: 80, usdc_size: 32, timestamp: tBuy2025, transaction_hash: "0xlt1", title: "Long Term^Market\nTest", outcome: "Yes" },
+      { type: "TRADE", side: "SELL", token_id: "LT", size: 80, usdc_size: 64, timestamp: tSellLt, transaction_hash: "0xlt2", title: "Long Term^Market\nTest", outcome: "Yes" },
+      // Multi-lot short-term (Various acquiredDate)
+      { type: "TRADE", side: "BUY", token_id: "MULTI", size: 50, usdc_size: 20, timestamp: tBuy2026a, transaction_hash: "0xm1", title: "Multi Lot", outcome: "No" },
+      { type: "TRADE", side: "BUY", token_id: "MULTI", size: 50, usdc_size: 25, timestamp: tBuy2026b, transaction_hash: "0xm2", title: "Multi Lot", outcome: "No" },
+      { type: "TRADE", side: "SELL", token_id: "MULTI", size: 100, usdc_size: 70, timestamp: tSellMulti, transaction_hash: "0xm3", title: "Multi Lot", outcome: "No" },
+      // Losing REDEEM ($0 proceeds)
+      { type: "TRADE", side: "BUY", token_id: "LOSS", size: 100, usdc_size: 60, timestamp: tBuy2026a, transaction_hash: "0xl1", title: "Loss Market", outcome: "Yes" },
+      { type: "REDEEM", token_id: "LOSS", size: 100, usdc_size: 0, timestamp: tRedeemLoss, transaction_hash: "0xl2", title: "Loss Market", outcome: "Yes" },
+      // Ordinary income REWARD (excluded from TXF capital disposals)
+      { type: "REWARD", size: 15, usdc_size: 15, timestamp: tRedeemLoss, transaction_hash: "0xrew1", title: "Liquidity Reward" },
+    ],
+    { year: "2026" }
+  );
+
+  const txfDefault = buildTurboTaxTxf(ledger.events, { exportDate: "2026-11-28" });
+  const lines = txfDefault.split("\n");
+  assert.equal(lines[0], "V042");
+  assert.equal(lines[1], "APolyLens");
+  assert.equal(lines[2], "D11/28/2026");
+  assert.equal(lines[3], "^");
+
+  // 3 capital disposal records (REWARD excluded)
+  const tdCount = lines.filter((l) => l === "TD").length;
+  assert.equal(tdCount, 3);
+  assert.ok(!txfDefault.includes("Liquidity Reward"));
+
+  // Sanitized description (no caret or embedded newline inside P line)
+  assert.ok(txfDefault.includes("P80 sh Long Term Market Test (Yes) [TRADE]"));
+  assert.ok(txfDefault.includes("N713\nC1\nL1\nP80 sh Long Term Market Test (Yes) [TRADE]\nD01/10/2025\nD05/10/2026\n$32.00\n$64.00\n^"));
+
+  // Losing REDEEM: code N711, cost basis $60.00 before proceeds $0.00
+  assert.ok(txfDefault.includes("N711\nC1\nL1\nP100 sh Loss Market (Yes) [REDEEM]\nD01/05/2026\nD03/19/2026\n$60.00\n$0.00\n^"));
+
+  // Multi-lot short-term: DVarious, cost basis $45.00 before proceeds $70.00
+  assert.ok(txfDefault.includes("N711\nC1\nL1\nP100 sh Multi Lot (No) [TRADE]\nDVarious\nD02/14/2026\n$45.00\n$70.00\n^"));
+
+  // basisReported: true uses 321 (Short-Term) and 323 (Long-Term)
+  const txfReported = buildTurboTaxTxf(ledger.events, { basisReported: true, exportDate: "2026-11-28" });
+  assert.ok(txfReported.includes("\nN323\n"));
+  assert.ok(txfReported.includes("\nN321\n"));
+  assert.ok(!txfReported.includes("\nN711\n"));
+  assert.ok(!txfReported.includes("\nN713\n"));
+});
+
+test("/api/tax-sample?format=txf returns deterministic V042 TXF without network calls", async () => {
+  const prevFetch = globalThis.fetch;
+  globalThis.fetch = async () => {
+    throw new Error("Network call forbidden in /api/tax-sample");
+  };
+
+  try {
+    const rTxf = await handleApiRequest({
+      pathname: "/api/tax-sample",
+      searchParams: new URLSearchParams("format=txf"),
+      method: "GET",
+    });
+    assert.equal(rTxf.status, 200);
+    assert.equal(rTxf.headers["Content-Type"], "text/plain; charset=utf-8");
+    assert.equal(rTxf.headers["Content-Disposition"], 'attachment; filename="polylens-sample-turbotax.txf"');
+    assert.ok(rTxf.body.startsWith("V042\nAPolyLens\n"));
+    assert.ok(rTxf.body.includes("\nN711\n"));
+    assert.ok(rTxf.body.includes("\nN713\n"));
+    assert.ok(rTxf.body.includes("\nDVarious\n"));
+    assert.ok(rTxf.body.includes("\n$120.50\n$0.00\n^"));
+    assert.ok(!rTxf.body.includes("Polymarket Liquidity Reward"));
+  } finally {
+    globalThis.fetch = prevFetch;
+  }
 });
